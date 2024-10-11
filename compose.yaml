@@ -1,0 +1,11 @@
+services:
+    server:
+        build: .
+        ports:
+            - "5000:5000"
+        networks:
+            - server-network
+
+networks:
+    server-network:
+        driver: bridge
