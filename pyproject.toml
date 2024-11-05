@@ -2,5 +2,4 @@
 name = "starsync"
 dependencies = [
   "Flask",
-  "supabase"
 ]
