@@ -6,10 +6,18 @@ from typing import List, Optional
 
 
 class MockRequest(BaseModel):
-    start: datetime
-    end: datetime
-    delta_minutes: int
-    seed: Optional[int] = Field(default=None)
+    start: datetime = Field(
+        description="Start date and time", example="2021-01-01 00:00:00"
+    )
+    end: datetime = Field(
+        description="End date and time", example="2021-01-01 01:00:00"
+    )
+    delta_minutes: int = Field(
+        description="Number of minutes between each data point", example=15
+    )
+    seed: Optional[int] = Field(
+        default=None, description="Random seed for reproducibility", example=42
+    )
 
 
 def gs_mock():
