@@ -14,20 +14,30 @@ router = APIRouter(
 
 class MockRequest(BaseModel):
     start: datetime = Field(
-        description="Start date and time", example="2021-01-01 00:00:00"
+        description="Start date and time",
+        json_schema_extra={"example": "2021-01-01 00:00:00"},
     )
     end: datetime = Field(
-        description="End date and time", example="2021-01-01 01:00:00"
+        description="End date and time",
+        json_schema_extra={"example": "2021-01-01 01:00:00"},
     )
     delta_minutes: int = Field(
-        description="Number of minutes between each data point", example=15
+        description="Number of minutes between each data point",
+        json_schema_extra={"example": 15},
     )
     seed: Optional[int] = Field(
-        default=None, description="Random seed for reproducibility", example=42
+        default=None,
+        description="Random seed for reproducibility",
+        json_schema_extra={"example": 41},
     )
 
 
-@router.post("/mock")
+@router.post(
+    "/mock",
+    summary="Generate mock data for ground stations",
+    response_model=List[bool],
+    response_description="List of boolean values that are equal to the ground stations availability at each time interval",
+)
 async def gs_mock(request: MockRequest):
     return JSONResponse(content=generate_mock_data(request))
 
