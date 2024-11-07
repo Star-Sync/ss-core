@@ -1,19 +1,18 @@
 from datetime import datetime
 from flask import request, jsonify
 import numpy as np
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 
 class MockRequest(BaseModel):
     start: datetime
     end: datetime
     delta_minutes: int
-    seed: int = None
+    seed: Optional[int] = Field(default=None)
 
 
 def gs_mock():
-    print("gs_mock")
     if request.method != "POST":
         return jsonify({"error": "Method not allowed"}), 405
     if not request.json or not all(
@@ -26,9 +25,12 @@ def gs_mock():
     delta = request.json.get("delta")
     seed = request.json.get("seed")
 
-    start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
-    end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
-    delta = int(delta)
+    try:
+        start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+        end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
+        delta = int(delta)
+    except ValueError as e:
+        return jsonify({"error": f"Invalid date format: {e}"}), 400
 
     mr = MockRequest(start=start, end=end, delta_minutes=delta, seed=seed)
 
@@ -48,6 +50,7 @@ def generate_mock_data(request: MockRequest) -> List[bool]:
 
     start = start.timestamp()
     end = end.timestamp()
+    delta = delta * 60
 
     if start is None or end is None or delta is None:
         raise ValueError("Missing parameters")
