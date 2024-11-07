@@ -9,6 +9,7 @@ class MockRequest(BaseModel):
     start: datetime
     end: datetime
     delta_minutes: int
+    seed: int = None
 
 
 def gs_mock():
@@ -23,12 +24,13 @@ def gs_mock():
     start = request.json.get("start")
     end = request.json.get("end")
     delta = request.json.get("delta")
+    seed = request.json.get("seed")
 
     start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
     end = datetime.strptime(end, "%Y-%m-%d %H:%M:%S")
     delta = int(delta)
 
-    mr = MockRequest(start=start, end=end, delta_minutes=delta)
+    mr = MockRequest(start=start, end=end, delta_minutes=delta, seed=seed)
 
     random_array = generate_mock_data(mr)
     # so, jsonify wil return a json object right
@@ -42,12 +44,17 @@ def generate_mock_data(request: MockRequest) -> List[bool]:
     start = request.start
     end = request.end
     delta = request.delta_minutes
+    seed = request.seed
 
     start = start.timestamp()
     end = end.timestamp()
 
     if start is None or end is None or delta is None:
         raise ValueError("Missing parameters")
+
+    # Set the seed for reproducibility if provided
+    if seed is not None:
+        np.random.seed(seed)
 
     # find the number of delta intervals between start and end
     size = int((end - start) / delta)
