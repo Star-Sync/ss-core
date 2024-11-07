@@ -4,8 +4,8 @@ from .routers import gs_mock, hello
 
 app = FastAPI()
 
-app.include_router(gs_mock.router)
-app.include_router(hello.router)
+app.include_router(gs_mock.router, prefix="/api/v1")
+app.include_router(hello.router, prefix="/api/v1")
 
 
 @app.get("/")
