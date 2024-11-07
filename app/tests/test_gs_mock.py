@@ -4,7 +4,8 @@ from datetime import datetime
 from app.main import app
 
 client = TestClient(app)
-url = "/gs_mock"
+ver_prefix = "/api/v1"
+url = ver_prefix + "/gs/mock"
 
 
 def test_gs_mock_success():

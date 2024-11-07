@@ -2,7 +2,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 client = TestClient(app)
-url = "/hello"
+ver_prefix = "/api/v1"
+url = ver_prefix + "/hello"
 
 
 def test_hello():
