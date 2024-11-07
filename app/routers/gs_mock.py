@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 router = APIRouter(
-    prefix="/gs_mock",
-    tags=["gs_mock"],
+    prefix="/gs",
+    tags=["gs"],
     responses={404: {"description": "Not found"}},
 )
 
@@ -27,7 +27,7 @@ class MockRequest(BaseModel):
     )
 
 
-@router.post("/")
+@router.post("/mock")
 async def gs_mock(request: MockRequest):
     return JSONResponse(content=generate_mock_data(request))
 
