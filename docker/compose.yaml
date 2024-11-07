@@ -9,14 +9,15 @@ services:
             - "5000:5000"
         networks:
             - server-network
-        develop:
-            watch:
-                - action: sync
-                  path: ../flaskr
-                  target: /app
-                - action: rebuild
-                  path: ../requirements.txt
-                  target: /app
+        volumes:
+            - ../flaskr:/app
+            - ../requirements.txt:/app/requirements.txt
+
+        environment:
+            FLASK_ENV: development
+            FLASK_APP: router.py
+            FLASK_DEBUG: 1
+
     # eventually, we will need to load the environment vars from a file
     db:
         image: postgres:latest
