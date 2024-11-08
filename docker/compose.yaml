@@ -6,17 +6,12 @@ services:
             context: ../
             dockerfile: docker/Dockerfile
         ports:
-            - "5000:5000"
+            - "5000:8000"
         networks:
             - server-network
         volumes:
-            - ../flaskr:/app
-            - ../requirements.txt:/app/requirements.txt
-
-        environment:
-            FLASK_ENV: development
-            FLASK_APP: router.py
-            FLASK_DEBUG: 1
+            - ../app:/opt/app
+            - ../requirements.txt:/opt/app/requirements.txt
 
     # eventually, we will need to load the environment vars from a file
     db:

@@ -1,5 +1,13 @@
 [project]
 name = "starsync"
 dependencies = [
-  "Flask",
+  "fastapi",
+  "uvicorn",
+  "numpy",
+  "pydantic"
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+log_cli_level = "INFO"
+pythonpath = "."
