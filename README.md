@@ -1,19 +1,67 @@
 # Get started
 
-## In a Container
+## Running the application
 
-1. Install docker
-2. change to docker directory `cd docker`
-3. `docker compose up --build`
-
-## In a virtual environment
+### In a virtual environment
 
 1. Install python (im using 3.10.12)
-2. Create a virtual environment `python3 -m venv .venv`
-3. Activate the virtual environment `.venv\Scripts\activate` on windows and `source .venv/bin/activate` on linux/mac
-4. Install the requirements `pip install -r requirements.txt`
-5. Run the app `python flaskr/hello.py`
+2. Create a virtual environment
+
+    ```sh
+    python3 -m venv .venv
+    ```
+
+3. Activate the virtual environment:
+    - On Windows:
+        ```sh
+        .venv\Scripts\activate
+        ```
+    - On Linux/Mac:
+        ```sh
+        source .venv/bin/activate
+        ```
+4. Install the requirements:
+    ```sh
+    pip install -r requirements.txt
+    ```
+5. Run the app locally with Uvicorn:
+    ```sh
+    uvicorn app.main:app --reload
+    ```
+
+### Running in a Docker container
+
+1. Build the Docker image:
+    ```sh
+    docker-compose build
+    ```
+2. Run the Docker container:
+    ```sh
+    docker-compose up
+    ```
+
+## Running Tests
+
+1. Ensure the virtual environment is activated.
+2. Install the dev requirements:
+    ```sh
+    pip install -r requirements-dev.txt
+    ```
+3. Run the tests with pytest:
+    ```sh
+    pytest --cov=./ --cov-report=xml --cov-fail-under=50
+    ```
+
+## Accessing the Application
+
+-   The application will be available at `http://localhost:8000`.
+
+## API Documentation
+
+-   FastAPI automatically generates interactive API documentation:
+    -   Swagger UI: `http://localhost:8000/docs`
+    -   ReDoc: `http://localhost:8000/redoc`
 
 # Layout best practices
 
-https://flask.palletsprojects.com/en/2.3.x/tutorial/layout/
+https://fastapi.tiangolo.com/tutorial/bigger-applications/
