@@ -31,13 +31,13 @@
 
 ### Running in a Docker container
 
-1. Build the Docker image:
+1. Change directories into the `docker` folder:
     ```sh
-    docker-compose build
+    cd docker
     ```
 2. Run the Docker container:
     ```sh
-    docker-compose up
+    docker-compose up --build
     ```
 
 ## Running Tests
