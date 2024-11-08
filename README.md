@@ -49,8 +49,9 @@
     ```
 3. Run the tests with pytest:
     ```sh
-    pytest --cov=./ --cov-report=xml --cov-fail-under=50
+    pytest --cov=./ --cov-report=html --cov-fail-under=50
     ```
+4. View the coverage report by opening `htmlcov/index.html` in a browser.
 
 ## Accessing the Application
 
