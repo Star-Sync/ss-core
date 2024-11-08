@@ -43,23 +43,15 @@ async def gs_mock(request: MockRequest):
 
 
 def generate_mock_data(request: MockRequest) -> List[bool]:
-    start = request.start
-    end = request.end
-    delta = request.delta_minutes
-    seed = request.seed
-
-    start = start.timestamp()
-    end = end.timestamp()
-    delta = delta * 60
-
-    if start is None or end is None or delta is None:
-        raise ValueError("Missing parameters")
+    start_epoch = request.start.timestamp()
+    end_epoch = request.end.timestamp()
+    delta_seconds = request.delta_minutes * 60
 
     # Set the seed for reproducibility if provided
-    if seed is not None:
-        np.random.seed(seed)
+    if request.seed:
+        np.random.seed(request.seed)
 
     # find the number of delta intervals between start and end
-    size = int((end - start) / delta)
+    size = int((end_epoch - start_epoch) / delta_seconds)
     random_array = np.random.choice([True, False], size=size).tolist()
     return random_array
