@@ -2,17 +2,19 @@
 FROM python:3.10-slim
 
 # Set the working directory in the container
-WORKDIR /app
+WORKDIR /opt/app
 
-COPY requirements.txt /app
+COPY requirements.txt /opt/app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY flaskr /app
+# Copy the application code into the container
+COPY app/ /opt/app
 
-EXPOSE 5000
+# Expose the port the app runs on
+EXPOSE 8000
 
-ENV FLASK_APP=router.py
+WORKDIR /opt
 
-# Run app.py when the container launches
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Command to run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
