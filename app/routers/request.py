@@ -1,6 +1,12 @@
+from typing import List
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from ..models.request import RFTimeRequestModel, ContactRequestModel
+
+from app.entities.GeneralContact import GeneralContact
+from app.entities.RFTime import RFTime
+from ..models.request import GeneralContactResponseModel, RFTimeRequestModel, ContactRequestModel
+from ..services.request import schedule
+
 
 router = APIRouter(
     prefix="/request",
@@ -12,11 +18,15 @@ router = APIRouter(
 @router.post(
     "/rf-time",
     summary="Ground Station RF Time Request ",
-    response_model=str,
-    response_description="Simple success string for now",
+    response_model=List[str],
+    response_description="Scheduled requests",
 )
-async def gs_mock(request: RFTimeRequestModel):
-    return JSONResponse(content="RF Time Success!")
+async def rf_time(request: RFTimeRequestModel):
+    bookings = await schedule(request)
+    
+    # need to figure out the serialization; want to use GeneralContactResponseModel for that
+    # for now, the response of bookings is List[str]
+    return JSONResponse(content=bookings)
 
 
 @router.post(
@@ -25,5 +35,5 @@ async def gs_mock(request: RFTimeRequestModel):
     response_model=str,
     response_description="Simple success string for now",
 )
-async def gs_mock(request: ContactRequestModel):
+async def contact(request: ContactRequestModel):
     return JSONResponse(content="Contact Success!")

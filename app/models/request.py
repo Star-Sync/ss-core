@@ -1,5 +1,6 @@
+import asyncio
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -22,15 +23,15 @@ class RFTimeRequestModel(BaseModel):
     )
     uplink: float = Field(
         description="Time in seconds that the mission is requesting uplink support",
-        example=6000
+        example=600
     )
     downlink: float = Field(
         description="Time in seconds that the mission is requesting support for downlinking spacecraft telemetry",
-        example=6000
+        example=600
     )
     science: float = Field(
         description="Time in seconds that the mission is requesting support for downlinking science data",
-        example=1500
+        example=150
     )
     passNum: Optional[int] = Field(
         default=1,
@@ -84,3 +85,70 @@ class ContactRequestModel(BaseModel):
         description="Time of the Loss of Signal for the contact",
         example="2024-10-15T13:00:00"
     )
+
+class GeneralContactResponseModel(BaseModel):
+    '''
+    This is a general response model for both RF time and contact requests.
+    '''
+    mission: str = Field(
+        description="Name of the mission making the request",
+        example="SCISAT"
+    )
+    satellite: str = Field(
+        description="Name of the satellite the request is for",
+        example="SCISAT-1"
+    )
+    station: str = Field(
+        description="The station the request is for",
+        example="Inuvik"
+    )
+    orbit: Optional[str] = Field(
+        description="The orbit number of the satellite at the time of AOS",
+        example="SCISAT-1234"
+    )
+    uplink: bool = Field(
+        description="Is an uplink required for this contact",
+        example=True
+    )
+    telemetry: bool = Field(
+        description="Is telemetry downlink required for this contact",
+        example=True
+    )
+    science: bool = Field(
+        description="Is science downlink required for this contact",
+        example=False
+    )
+    startTime: datetime = Field(
+        description="The beginning of the time window during which the requested time will be provided in",
+        example="2024-10-15T12:00:00"
+    )
+    endTime: datetime = Field(
+        description="The end of the time window during which the requested time will be provided in",
+        example="2024-10-15T12:20:00"
+    )
+    duration: float = Field(
+        description="Duration of the request in seconds",
+        example=1200
+    )
+    aos: Optional[datetime] = Field(
+        description="Time of the Acquisition of Signal for the contact",
+        example="2024-10-15T12:00:00"
+    )
+    rf_on: Optional[datetime] = Field(
+        description="Time at which the elevation angle satisfies station mask for a given ground station",
+        example="2024-10-15T12:05:00"
+    )
+    rf_off: Optional[datetime] = Field(
+        description="Time at which the elevation angle satisfies station mask for a given ground station",
+        example="2024-10-15T12:15:00"
+    )
+    los: Optional[datetime] = Field(
+        description="Time of the Loss of Signal for the contact",
+        example="2024-10-15T12:20:00"
+    )
+
+    class Config:
+        # Pydantic's default datetime format to serialize `datetime` to ISO 8601 string
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if v is not None else None
+        }
