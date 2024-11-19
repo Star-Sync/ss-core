@@ -47,11 +47,11 @@ class ContactRequestModel(BaseModel):
     )
     satellite: str = Field(
         description="Name of the satellite the request is for",
-        example="SCISAT-1"
+        example="SCISAT 1"
     )
     station: str = Field(
         description="The station the request is for",
-        example="Inuvik"
+        example="Inuvik Northwest"
     )
     orbit: str = Field(
         description="The orbit number of the satellite at the time of AOS",

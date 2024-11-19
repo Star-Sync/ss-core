@@ -18,3 +18,6 @@ class Satellite():
         tle_lines = self.tle.splitlines()
         satellite = EarthSatellite(tle_lines[1], tle_lines[2], tle_lines[0])
         return satellite
+    
+    def __repr__(self):
+        return (f"Satellite(name={self.name})")

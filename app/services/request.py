@@ -1,17 +1,23 @@
-import copy
+from copy import deepcopy
+import asyncio
+import time
 from datetime import datetime
-from typing import List
+from typing import Dict, List
 from app.entities import GeneralContact
 from skyfield.api import load
 from app.entities.Visibility import Visibility
-from ..entities.GroundStation import GroundStation
+from app.entities.GroundStation import GroundStation
 from ..entities.RFTime import RFTime
+from ..entities.Contact import Contact
 from ..entities.Satellite import Satellite
-from ..entities.GeneralContact import GeneralContact, existing_bookings, lock
+from ..entities.GeneralContact import GeneralContact
 from ..models.request import GeneralContactResponseModel, RFTimeRequestModel, ContactRequestModel
 from skyfield.api import utc
 
-##################### Set up of static values and objects #####################
+
+
+############################### Set up of static values and objects ###############################
+
 time_format = "%Y-%m-%dT%H:%M:%S"
 
 tle1 = '''SCISAT 1
@@ -21,97 +27,164 @@ tle2 = '''NEOSSAT
 1 39089U 13009D   24298.50343230  .00000620  00000+0  23091-3 0  9992
 2 39089  98.4036 122.5021 0010164 233.8050 126.2197 14.35350046610553'''
 
-static_satellites: dict[str, Satellite] = {
-    "SCISAT 1": Satellite(tle1, 150, 150, 150, "exCone", 4),
-    "NEOSSAT": Satellite(tle2, 150, 150, 150, "exCone", 4)
-}
+s1 = Satellite(tle1, 150, 150, 150, "exCone", 4)
+s2 = Satellite(tle2, 150, 150, 150, "exCone", 4)
 
-static_ground_stations: List[GroundStation] = [
-    GroundStation("inuvik_northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 150),
-    GroundStation("prince_albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150),
-    GroundStation("gatineau_quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
-]
-###############################################################################
+g1 = GroundStation("Inuvik Northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 150)
+g2 = GroundStation("Prince Albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150)
+g3 = GroundStation("Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
 
-# Might end up using abstract GeneralContactResponseModel class
-async def schedule(request: RFTimeRequestModel) -> List[str]:
-    
-    rf_time: GeneralContact = _map_model_to_object(request)
+static_satellites: dict[str, Satellite] = {"SCISAT 1": s1, "NEOSSAT": s2}
+static_ground_stations: List[GroundStation] = [g1, g2, g3]
 
-    async with lock:
-        # get the existing bookings 
-        global existing_bookings
-        current = copy.deepcopy(existing_bookings)
+_db_contact_times: List[GeneralContact] = []
+_db_requests: List[GeneralContact] = []
 
-        # add new booking
-        current.append(rf_time)
-        # perform scheduling
-        existing_bookings = algo(current)
+###################################################################################################
 
-        response = [repr(booking) for booking in existing_bookings]
+def get_db_contact_times() -> List[GeneralContact]:
+    return _db_contact_times
 
-    print(response)
 
-    return response
-    
 
-def algo(requests: List[GeneralContact]) -> List[GeneralContact]:
-    # in a final implementation ground station (gss) list needs to be retrieved from the DB
-    slots = get_slots(reqs=requests, gss=static_ground_stations)
+def schedule(request):
+    # get existing bookings and requests (currently in-memory list)
+    global _db_requests
+    global _db_contact_times
 
+    # Use deepcopy to prevent mutating global list directly
+    current: List[GeneralContact] = deepcopy(_db_requests)
+
+    # Add the new request
+    current.append(request)
+
+    # Sort the requests by earliest end time
+    current.sort(key=lambda v: v.end_time if isinstance(v, RFTime) else v.los)
+
+    # Update the global list
+    _db_requests = deepcopy(current)
+
+    _db_contact_times = algo(current)
+
+
+
+def schedule_rf(request: RFTimeRequestModel): 
+    # Map the request to an RFTime object
+    rf_time: RFTime = _map_rftime_model_to_object(request)
+    schedule(rf_time)
+
+
+
+def schedule_contact(request: ContactRequestModel):
+    # Map the request to an RFTime object
+    contact: Contact = _map_contact_model_to_object(request)
+    schedule(contact)
+
+
+
+def algo(reqs: List[GeneralContact]) -> List[GeneralContact]:
     bookings: List[GeneralContact] = []
+    
+    requests: List[GeneralContact] = deepcopy(reqs)
 
+    # iterate through the list, pick out Contact Requests and force into bookings 
+    for req in requests:
+        if isinstance(req, Contact):
+            booking = Contact(
+                mission=req.mission, 
+                satellite=req.satellite, 
+                station=req.satellite, 
+                uplink=req.uplink,
+                telemetry=req.telemetry,
+                science=req.science,
+                aos=req.aos,
+                rf_on=req.rf_on,
+                rf_off=req.rf_off,
+                los=req.los,
+                orbit=req.orbit,
+            )
+            bookings.append(booking)
+            requests.remove(req)
 
-    # not the most optimal (probably the most basic algo)
-    # does not consider any edge cases (ex. no more room for scheduling)
+    slots = get_slots(requests)
+
+    # not the most optimal; complexity O(S*R) where S is Slots, and R is Requests
+    # does not consider any edge cases (ex. no more room for scheduling - it would schedule in the sequential order)
     for slot in slots:
+        if len(requests) == 0: break
         for req in requests:
-            if req.start_time <= slot.start <= req.end_time and req.start_time <= slot.end <= req.end_time:
-                if slot.sat == req.satellite and req.timeRemaining > 0:
-                    last = len(bookings)
-                    if len(bookings)==0 or slot.start > bookings[last-1].end_time:
-                        booking = GeneralContact(
+            
+            # determine the end time of last scheduled request (ensure no conflicts)
+            if len(bookings) != 0:
+                last = bookings[len(bookings)-1]
+                last_end_time = last.end_time if isinstance(last, RFTime) else last.los
+                if slot.start < last_end_time:
+                    break       # overlap with scheduled request
+            
+            if isinstance(req, RFTime):
+                req: RFTime = req
+                if (req.start_time <= slot.start <= req.end_time) and (req.start_time <= slot.end <= req.end_time): # The time frame of slot must fit in the request  
+                    if slot.sat.name == req.satellite.name and req.timeRemaining >= 0:                                                 # The time slot must be able to service the satellite
+                        booking = RFTime(
                             mission=req.mission, 
                             satellite=req.satellite, 
                             station=slot.gs, 
-                            uplink=req.uplink!=float(0),
-                            telemetry=req.telemetry!=float(0),
-                            science=req.science!=float(0),
+                            uplink=req.uplink,
+                            telemetry=req.telemetry,
+                            science=req.science,
                             start_time=slot.start,
                             end_time=slot.end)
                         bookings.append(booking)
-
-                        # modify the request to decrease the time remaining 
-                        # need to modify the logic such that all passes are used
+                        
+                        # decrease the time remaining 
+                        # need to change logic such that all passes specified in request are used
                         req.set_time_remaining(slot.dur)
-                        req.passNumRemaining -= 1
+                        req.decrease_pass()
+
+                        if req.timeRemaining <= 0:
+                            requests.remove(req)    # remove from the list of requests
                         break
-    
     return bookings
 
+def get_slots(requests: List[GeneralContact]):
+    # integrate with gs_mock to filter out unavailable times
+    return get_visibilities(requests=requests)
 
-def get_slots(reqs: List[RFTime], gss: List[GroundStation]) -> List[Visibility]:
+
+def get_visibilities(requests: List[GeneralContact]) -> List[Visibility]:
     '''
     Get the availability windows for the all the requests in the list
     Return list of Visibility objects
     '''
     ts = load.timescale()
-    
-    sats = set()
 
+    # in a final implementation ground station (gss) list needs to be retrieved from the DB
+    global static_ground_stations
+    
+    satellites: Dict[str, Satellite] = {}
+
+    # determine the lower and higher time bound for visibility search
     lowest = datetime.strptime("9999-01-01T00:00:00", time_format)
     highest = datetime.strptime("1900-01-01T00:00:00", time_format)
 
     visibilities: List[Visibility] = []
-    
-    for r in reqs:
-        sats.add(r.satellite) 
-        lowest = min(r.start_time, lowest)
-        highest = max(r.end_time, highest)
+
+    # for the request of type Contact, for now we assume that aos and los parameters will comply with GSs station mask
+    for req in requests:
+        if isinstance(req, RFTime):
+            r: RFTime = req
+            lowest = min(r.start_time, lowest)
+            highest = max(r.end_time, highest)
+        else:
+            r: Contact = req
+            lowest = min(r.aos, lowest)
+            highest = max(r.los, highest)
+        
+        satellites[r.satellite.name] = r.satellite
 
     # Three nested for-loops - horrible - I know; will be optimized later
-    for s in sats:
-        for g in gss:
+    for s in satellites.values():
+        for g in static_ground_stations:
             t, events = s.get_sf_sat().find_events(g.get_sf_geo_position(), ts.from_datetime(lowest.replace(tzinfo=utc)), ts.from_datetime(highest.replace(tzinfo=utc)), g.mask)
             current_rise = None
 
@@ -121,14 +194,15 @@ def get_slots(reqs: List[RFTime], gss: List[GroundStation]) -> List[Visibility]:
                 elif event == 2 and current_rise:
                     visibilities.append(Visibility(gs=g, sat=s, start=current_rise, end=ti.utc_datetime().replace(tzinfo=None)))
                     current_rise = None
-    visibilities.sort(key=lambda v: v.start)
 
+    visibilities.sort(key=lambda v: v.start)
     return visibilities
 
 
-def _map_model_to_object(req: GeneralContactResponseModel) -> RFTime:
-    print("req inside mapper", req.satellite)
+def _map_rftime_model_to_object(req: RFTimeRequestModel) -> RFTime:
+    global static_satellites
     sat = static_satellites.get(req.satellite)
+
     if sat is None:
         raise ValueError(f"Satellite {req.satellite} does not exist in the static map.")
 
@@ -138,7 +212,36 @@ def _map_model_to_object(req: GeneralContactResponseModel) -> RFTime:
         start_time = req.startTime,
         end_time = req.endTime,
         uplink = req.uplink,
-        downlink = req.downlink,
+        telemetry = req.downlink,
         science = req.science,
         pass_num = req.passNum
+    )
+
+def _map_contact_model_to_object(req: ContactRequestModel) -> Contact:
+    global static_satellites
+    global static_ground_stations
+
+    sat = static_satellites.get(req.satellite)
+    if sat is None:
+        raise ValueError(f"Satellite {req.satellite} does not exist in the static map.")
+    
+    gs = None
+    for station in static_ground_stations:
+        if station.name == req.station:
+            gs = station
+            break
+    if gs is None:
+        raise ValueError(f"Ground Station {req.station} does not exist in the static map.")
+    
+    return Contact(
+        mission=req.mission,
+        satellite=sat,
+        station=gs,
+        uplink=req.uplink,
+        telemetry=req.telemetry,
+        science=req.science,
+        aos=req.aos,
+        rf_on=req.rf_on,
+        rf_off=req.rf_off,
+        los=req.los,
     )
