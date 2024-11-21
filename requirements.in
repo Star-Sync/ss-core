@@ -3,3 +3,4 @@ uvicorn
 numpy
 python-dotenv
 sqlmodel
+psycopg2-binary
