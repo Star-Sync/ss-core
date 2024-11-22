@@ -5,13 +5,13 @@ from pydantic import BaseModel, Field
 
 
 class RFTimeRequestModel(BaseModel):
-    mission: str = Field(
+    missionName: str = Field(
         description="Name of the mission making the request",
         example="SCISAT"
     )
-    satellite: str = Field(
+    satelliteId: str = Field(
         description="Name of the satellite the request is for",
-        example="SCISAT 1"
+        example="1"
     )
     startTime: datetime = Field(
         description="The beginning of the time window during which the requested time should be provided in",
@@ -21,19 +21,19 @@ class RFTimeRequestModel(BaseModel):
         description="The end of the time window during which the requested time should be provided in",
         example="2024-10-15T23:59:59"
     )
-    uplink: float = Field(
+    uplinkTime: float = Field(
         description="Time in seconds that the mission is requesting uplink support",
         example=600
     )
-    downlink: float = Field(
+    downlinkTime: float = Field(
         description="Time in seconds that the mission is requesting support for downlinking spacecraft telemetry",
         example=600
     )
-    science: float = Field(
+    scienceTime: float = Field(
         description="Time in seconds that the mission is requesting support for downlinking science data",
         example=150
     )
-    passNum: Optional[int] = Field(
+    minimumNumberOfPasses: Optional[int] = Field(
         default=1,
         description="The minimum number of passes that should be provided to the mission in support of this request",
         example=2
@@ -41,15 +41,15 @@ class RFTimeRequestModel(BaseModel):
 
 
 class ContactRequestModel(BaseModel):
-    mission: str = Field(
+    missionName: str = Field(
         description="Name of the mission making the request",
         example="SCISAT"
     )
-    satellite: str = Field(
+    satelliteId: str = Field(
         description="Name of the satellite the request is for",
         example="SCISAT 1"
     )
-    station: str = Field(
+    location: str = Field(
         description="The station the request is for",
         example="Inuvik Northwest"
     )
@@ -69,19 +69,19 @@ class ContactRequestModel(BaseModel):
         description="Is science downlink required for this contact",
         example=False
     )
-    aos: datetime = Field(
+    aosTime: datetime = Field(
         description="Time of the Acquisition of Signal for the contact",
         example="2024-10-15T12:00:00"
     )
-    rf_on: datetime = Field(
+    rfOnTime: datetime = Field(
         description="Time at which the elevation angle satisfies station mask for a given ground station",
         example="2024-10-15T12:05:00"
     )
-    rf_off: datetime = Field(
+    rfOffTime: datetime = Field(
         description="Time at which the elevation angle satisfies station mask for a given ground station",
         example="2024-10-15T12:45:00"
     )
-    los: datetime = Field(
+    losTime: datetime = Field(
         description="Time of the Loss of Signal for the contact",
         example="2024-10-15T13:00:00"
     )

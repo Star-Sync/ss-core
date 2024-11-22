@@ -34,7 +34,7 @@ g1 = GroundStation("Inuvik Northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 15
 g2 = GroundStation("Prince Albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150)
 g3 = GroundStation("Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
 
-static_satellites: dict[str, Satellite] = {"SCISAT 1": s1, "NEOSSAT": s2}
+static_satellites: dict[str, Satellite] = {"1": s1, "2": s2}
 static_ground_stations: List[GroundStation] = [g1, g2, g3]
 
 _db_contact_times: List[GeneralContact] = []
@@ -201,47 +201,47 @@ def get_visibilities(requests: List[GeneralContact]) -> List[Visibility]:
 
 def _map_rftime_model_to_object(req: RFTimeRequestModel) -> RFTime:
     global static_satellites
-    sat = static_satellites.get(req.satellite)
+    sat = static_satellites.get(req.satelliteId)
 
     if sat is None:
-        raise ValueError(f"Satellite {req.satellite} does not exist in the static map.")
+        raise ValueError(f"Satellite {req.satelliteId} does not exist in the static map.")
 
     return RFTime(
-        mission=req.mission,
+        mission=req.missionName,
         satellite=sat,
         start_time = req.startTime,
         end_time = req.endTime,
-        uplink = req.uplink,
-        telemetry = req.downlink,
-        science = req.science,
-        pass_num = req.passNum
+        uplink = req.uplinkTime,
+        telemetry = req.downlinkTime,
+        science = req.scienceTime,
+        pass_num = req.minimumNumberOfPasses
     )
 
 def _map_contact_model_to_object(req: ContactRequestModel) -> Contact:
     global static_satellites
     global static_ground_stations
 
-    sat = static_satellites.get(req.satellite)
+    sat = static_satellites.get(req.satelliteId)
     if sat is None:
-        raise ValueError(f"Satellite {req.satellite} does not exist in the static map.")
+        raise ValueError(f"Satellite {req.satelliteId} does not exist in the static map.")
     
     gs = None
     for station in static_ground_stations:
-        if station.name == req.station:
+        if station.name == req.location:
             gs = station
             break
     if gs is None:
-        raise ValueError(f"Ground Station {req.station} does not exist in the static map.")
+        raise ValueError(f"Ground Station {req.location} does not exist in the static map.")
     
     return Contact(
-        mission=req.mission,
+        mission=req.missionName,
         satellite=sat,
         station=gs,
         uplink=req.uplink,
         telemetry=req.telemetry,
         science=req.science,
-        aos=req.aos,
-        rf_on=req.rf_on,
-        rf_off=req.rf_off,
-        los=req.los,
+        aos=req.aosTime,
+        rf_on=req.rfOnTime,
+        rf_off=req.rfOffTime,
+        los=req.losTime,
     )
