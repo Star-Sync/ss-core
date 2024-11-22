@@ -90,6 +90,10 @@ class GeneralContactResponseModel(BaseModel):
     '''
     This is a general response model for both RF time and contact requests.
     '''
+    requestType: str = Field(
+        description="Type of the request (either RF or Contact)",
+        example="RFTime"
+    )
     mission: str = Field(
         description="Name of the mission making the request",
         example="SCISAT"
@@ -106,15 +110,15 @@ class GeneralContactResponseModel(BaseModel):
         description="The orbit number of the satellite at the time of AOS",
         example="SCISAT-1234"
     )
-    uplink: bool = Field(
+    uplink: int = Field(
         description="Is an uplink required for this contact",
         example=True
     )
-    telemetry: bool = Field(
+    telemetry: int = Field(
         description="Is telemetry downlink required for this contact",
         example=True
     )
-    science: bool = Field(
+    science: int = Field(
         description="Is science downlink required for this contact",
         example=False
     )

@@ -1,10 +1,10 @@
 from typing import List
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 
-from ..models.request import RFTimeRequestModel, ContactRequestModel
-from ..services.request import get_db_contact_times, schedule_contact, schedule_rf
+from ..models.request import GeneralContactResponseModel, RFTimeRequestModel, ContactRequestModel
+from ..services.request import get_db_contact_times, schedule_contact, schedule_rf, map_to_response_model
 
 
 router = APIRouter(
@@ -16,15 +16,18 @@ router = APIRouter(
 @router.get(
     "/",
     summary="Get all the scheduled requests",
-    response_model=List[str],
+    response_model=List[GeneralContactResponseModel],
     response_description="Scheduled requests",
 )
-def rf_time():
-    # need to figure out the serialization; want to use GeneralContactResponseModel for that
-    # for now, the response of bookings is List[str]
-    future_reqs = [repr(booking) for booking in get_db_contact_times()]
-    print(future_reqs)
-    return JSONResponse(content=future_reqs)
+def bookings():
+    try:
+        future_reqs = [
+            map_to_response_model(booking) for booking in get_db_contact_times()
+        ]
+        return future_reqs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post(
     "/rf-time",

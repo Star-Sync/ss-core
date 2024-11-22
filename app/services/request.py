@@ -245,3 +245,43 @@ def _map_contact_model_to_object(req: ContactRequestModel) -> Contact:
         rf_off=req.rfOffTime,
         los=req.losTime,
     )
+
+def map_to_response_model(request: GeneralContact) -> GeneralContactResponseModel:
+    if isinstance(request, Contact):
+        return GeneralContactResponseModel(
+            requestType="Contact",
+            mission=request.mission,
+            satellite=request.satellite.name,
+            station=request.station.name,
+            orbit=request.orbit,
+            uplink=request.uplink,
+            telemetry=request.telemetry,
+            science=request.science,
+            startTime=request.aos,
+            endTime=request.los,
+            duration=(request.los - request.aos).total_seconds(),
+            aos=request.aos,
+            rf_on=request.rf_on,
+            rf_off=request.rf_off,
+            los=request.los,
+        )
+    elif isinstance(request, RFTime):
+        return GeneralContactResponseModel(
+            requestType="RFTime",
+            mission=request.mission,
+            satellite=request.satellite.name,
+            station=request.station.name,
+            orbit=None,
+            uplink=request.uplink,
+            telemetry=request.telemetry,
+            science=request.science,
+            startTime=request.start_time,
+            endTime=request.end_time,
+            duration=(request.end_time - request.start_time).total_seconds(),
+            aos=None,
+            rf_on=None,
+            rf_off=None,
+            los=None,
+        )
+    else:
+        raise ValueError(f"Unsupported request type: {type(request).__name__}")
