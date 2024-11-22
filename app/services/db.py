@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-
-DATABASE_URL = "postgresql://starsync:starsync@ss-db:5432/starsync"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://starsync:starsync@ss-db:5432/starsync"
+)
 
 engine = create_engine(DATABASE_URL, echo=True)
 
