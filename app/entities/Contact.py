@@ -5,6 +5,7 @@ from app.entities.GeneralContact import GeneralContact
 from app.entities.GroundStation import GroundStation
 from app.entities.Satellite import Satellite
 
+
 class Contact(GeneralContact):
     def __init__(
         self,
@@ -31,5 +32,7 @@ class Contact(GeneralContact):
         self.orbit = orbit
 
     def __repr__(self):
-        return (f"Contact(gs={self.station.name}, sat={self.satellite.name}, "
-                f"start={self.aos}, end={self.los}, dur={(self.los-self.aos).total_seconds()}s)")
+        return (
+            f"Contact(gs={self.station.name}, sat={self.satellite.name}, "
+            f"start={self.aos}, end={self.los}, dur={(self.los-self.aos).total_seconds()}s)"
+        )
