@@ -285,3 +285,19 @@ def map_to_response_model(request: GeneralContact) -> GeneralContactResponseMode
         )
     else:
         raise ValueError(f"Unsupported request type: {type(request).__name__}")
+
+# Insert 1 request into the _db_contact_times
+r1 = Contact(
+    mission="SCI", 
+    satellite=static_satellites.get("1"),
+    station=static_ground_stations[0],
+    uplink=True,
+    telemetry=True,
+    science=False,
+    aos=datetime.strptime("2024-10-22T19:00:00", time_format),
+    rf_on=datetime.strptime("2024-10-22T19:03:00", time_format),
+    rf_off=datetime.strptime("2024-10-22T19:23:00", time_format),
+    los=datetime.strptime("2024-10-15T19:25:00", time_format),
+    )
+
+_db_contact_times.append(r1)
