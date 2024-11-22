@@ -1,6 +1,5 @@
-from fastapi import Depends, HTTPException
+from fastapi import HTTPException
 from sqlmodel import Session, select
-from .db import get_db
 from ..models.mission import Mission, MissionCreate
 
 
@@ -10,7 +9,7 @@ def get_mission_by_id(missionid: int, db: Session) -> Mission | None:
     return result
 
 
-def create_mission_service(mission: MissionCreate, db: Session = Depends(get_db)):
+def create_mission_service(mission: MissionCreate, db: Session) -> Mission:
     existing_mission = db.exec(
         select(Mission).where(Mission.missionname == mission.missionname)
     ).first()
@@ -26,7 +25,7 @@ def create_mission_service(mission: MissionCreate, db: Session = Depends(get_db)
     return _mission
 
 
-def delete_mission_service(missionid: int, db: Session = Depends(get_db)):
+def delete_mission_service(missionid: int, db: Session):
     mission = get_mission_by_id(missionid, db)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -36,7 +35,7 @@ def delete_mission_service(missionid: int, db: Session = Depends(get_db)):
     return {"detail": "Mission deleted successfully"}
 
 
-def list_missions_service(db: Session = Depends(get_db)):
+def list_missions_service(db: Session):
     statement = select(Mission)
     results = db.exec(statement).all()
     return results
