@@ -37,7 +37,7 @@
     ```
 2. Run the Docker container:
     ```sh
-    docker-compose up --build
+    docker compose up --build
     ```
 
 ## Running Tests
