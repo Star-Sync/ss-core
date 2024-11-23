@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -8,16 +8,19 @@ class RFTimeRequestModel(BaseModel):
     missionName: str = Field(
         description="Name of the mission making the request", example="SCISAT"
     )
+    # will have to rename the field to satelliteName and supply the actual name of the satellite
     satelliteId: str = Field(
         description="Name of the satellite the request is for", example="1"
     )
+    # the example times would probably have to be modified eventually
+    # this is just to prevent confusion when trying out api endpoints through swagger
     startTime: datetime = Field(
         description="The beginning of the time window during which the requested time should be provided in",
-        example="2024-10-15T00:00:00",
+        example=datetime.now() + timedelta(minutes=30),
     )
     endTime: datetime = Field(
         description="The end of the time window during which the requested time should be provided in",
-        example="2024-10-15T23:59:59",
+        example=datetime.now() + timedelta(days=1, minutes=30),
     )
     uplinkTime: float = Field(
         description="Time in seconds that the mission is requesting uplink support",
@@ -42,8 +45,9 @@ class ContactRequestModel(BaseModel):
     missionName: str = Field(
         description="Name of the mission making the request", example="SCISAT"
     )
+    # will have to rename the field to satelliteName and supply the actual name of the satellite
     satelliteId: str = Field(
-        description="Name of the satellite the request is for", example="SCISAT 1"
+        description="Name of the satellite the request is for", example="1"
     )
     location: str = Field(
         description="The station the request is for", example="Inuvik Northwest"
@@ -61,21 +65,22 @@ class ContactRequestModel(BaseModel):
     science: bool = Field(
         description="Is science downlink required for this contact", example=False
     )
+    # the example times would probably have to be modified eventually
     aosTime: datetime = Field(
         description="Time of the Acquisition of Signal for the contact",
-        example="2024-10-15T12:00:00",
+        example=datetime.now() + timedelta(minutes=30),
     )
     rfOnTime: datetime = Field(
         description="Time at which the elevation angle satisfies station mask for a given ground station",
-        example="2024-10-15T12:05:00",
+        example=datetime.now() + timedelta(minutes=32),
     )
     rfOffTime: datetime = Field(
         description="Time at which the elevation angle satisfies station mask for a given ground station",
-        example="2024-10-15T12:45:00",
+        example=datetime.now() + timedelta(minutes=48),
     )
     losTime: datetime = Field(
         description="Time of the Loss of Signal for the contact",
-        example="2024-10-15T13:00:00",
+        example=datetime.now() + timedelta(minutes=50),
     )
 
 

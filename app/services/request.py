@@ -1,7 +1,7 @@
 from copy import deepcopy
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 from app.entities import GeneralContact
 from skyfield.api import load
@@ -40,8 +40,22 @@ g3 = GroundStation("Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150
 static_satellites: dict[str, Satellite] = {"1": s1, "2": s2}
 static_ground_stations: List[GroundStation] = [g1, g2, g3]
 
-_db_contact_times: List[GeneralContact] = []
-_db_requests: List[GeneralContact] = []
+# Insert 1 request into the _db_contact_times
+r1 = Contact(
+    mission="SCI",
+    satellite=static_satellites.get("1"),
+    station=static_ground_stations[0],
+    uplink=True,
+    telemetry=True,
+    science=False,
+    aos=datetime.now(),
+    rf_on=datetime.now() + timedelta(minutes=2),
+    rf_off=datetime.now() + timedelta(minutes=18),
+    los=datetime.now() + timedelta(minutes=20),
+)
+
+_db_contact_times: List[GeneralContact] = [r1]
+_db_requests: List[GeneralContact] = [r1]
 
 ###################################################################################################
 
@@ -312,20 +326,3 @@ def map_to_response_model(request: GeneralContact) -> GeneralContactResponseMode
         )
     else:
         raise ValueError(f"Unsupported request type: {type(request).__name__}")
-
-
-# Insert 1 request into the _db_contact_times
-r1 = Contact(
-    mission="SCI",
-    satellite=static_satellites.get("1"),
-    station=static_ground_stations[0],
-    uplink=True,
-    telemetry=True,
-    science=False,
-    aos=datetime.strptime("2024-10-22T19:00:00", time_format),
-    rf_on=datetime.strptime("2024-10-22T19:03:00", time_format),
-    rf_off=datetime.strptime("2024-10-22T19:23:00", time_format),
-    los=datetime.strptime("2024-10-15T19:25:00", time_format),
-)
-
-_db_contact_times.append(r1)

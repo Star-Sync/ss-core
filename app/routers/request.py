@@ -34,8 +34,6 @@ def bookings():
         future_reqs = [
             map_to_response_model(booking) for booking in get_db_contact_times()
         ]
-        for i in get_db_contact_times():
-            print(i)
         return future_reqs
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -49,8 +47,6 @@ def bookings():
 )
 def rf_time(request: RFTimeRequestModel):
     schedule_rf(request)
-    for i in get_db_contact_times():
-        print(i)
     return request
 
 
@@ -62,6 +58,4 @@ def rf_time(request: RFTimeRequestModel):
 )
 def contact(request: ContactRequestModel):
     schedule_contact(request)
-    for i in get_db_contact_times():
-        print(i)
     return request
