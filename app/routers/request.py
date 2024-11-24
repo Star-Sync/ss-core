@@ -1,22 +1,15 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
-from sqlmodel import Session
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-from ..services.db import get_db
-
 from ..models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
     ContactRequestModel,
 )
 from ..services.request import (
-    get_db_contact_times,
-    schedule_contact,
-    schedule_rf,
+    SchedulerService,
+    get_scheduler_service,
     map_to_response_model,
 )
-
 
 router = APIRouter(
     prefix="/request",
@@ -31,10 +24,11 @@ router = APIRouter(
     response_model=List[GeneralContactResponseModel],
     response_description="Scheduled requests",
 )
-def bookings(db: Session = Depends(get_db)):
+def bookings(scheduler: SchedulerService = Depends(get_scheduler_service)):
     try:
         future_reqs = [
-            map_to_response_model(booking) for booking in get_db_contact_times(db)
+            map_to_response_model(booking)
+            for booking in scheduler.get_db_contact_times()
         ]
         return future_reqs
     except Exception as e:
@@ -44,23 +38,29 @@ def bookings(db: Session = Depends(get_db)):
 @router.post(
     "/rf-time",
     summary="Ground Station RF Time Request",
-    response_model=RFTimeRequestModel,
+    response_model=GeneralContactResponseModel,
     response_description="Request body",
 )
-def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
-    schedule_rf(request, db)
-    return request
+def rf_time(
+    request: RFTimeRequestModel,
+    scheduler: SchedulerService = Depends(get_scheduler_service),
+):
+    res = scheduler.schedule_rf(request)
+    return res
 
 
 @router.post(
     "/contact",
     summary="Ground Station Contact Request",
-    response_model=ContactRequestModel,
+    response_model=GeneralContactResponseModel,
     response_description="Simple success string for now",
 )
-def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
-    schedule_contact(request, db)
-    return request
+def contact(
+    request: ContactRequestModel,
+    scheduler: SchedulerService = Depends(get_scheduler_service),
+):
+    res = scheduler.schedule_contact(request)
+    return res
 
 
 @router.get(
@@ -68,10 +68,12 @@ def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
     summary="Initialize the database",
     response_description="Database and tables created",
 )
-def initdb(db: Session = Depends(get_db)):
+def initdb(
+    scheduler: SchedulerService = Depends(get_scheduler_service),
+    # db: Session = Depends(get_db),
+):
     from ..services.db import create_db_and_tables
-    from ..services.request import init_db_contact_times
 
     create_db_and_tables()
-    init_db_contact_times(db)
+    scheduler.init_db_contact_times()
     return {"message": "Database and tables created"}

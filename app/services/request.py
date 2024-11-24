@@ -1,33 +1,59 @@
-from contextlib import contextmanager
-from copy import deepcopy
-from datetime import datetime
 from typing import Dict, List, Union
-
+from datetime import datetime
 from sqlmodel import Session, select
-
-# from app.entities.GeneralContact import GeneralContact
-from skyfield.api import load
-from app.entities.Visibility import Visibility
-from app.entities.GroundStation import GroundStation
-from app.services.db import get_db
+from skyfield.api import load, utc
+from copy import deepcopy
 from ..entities.RFTime import RFTime
 from ..entities.Contact import Contact
 from ..entities.Satellite import Satellite
-
+from ..entities.GroundStation import GroundStation
+from ..entities.Visibility import Visibility
 from ..models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
     ContactRequestModel,
 )
-from skyfield.api import utc
+from ..services.db import get_db
+from sqlalchemy.orm import joinedload
 
 GeneralContact = Union[RFTime, Contact]
 
-time_format = "%Y-%m-%dT%H:%M:%S"
 
+class SchedulerService:
+    def __init__(self, db: Session):
+        self.db = db
+        self.time_format = "%Y-%m-%dT%H:%M:%S"
 
-def init_db_contact_times(db: Session):
-    with db as db:
+    def get_db_contact_times(self) -> List[Union[RFTime, Contact]]:
+        rf_times: List[RFTime] = self.db.exec(
+            select(RFTime).options(joinedload(RFTime.satellite))
+        ).all()
+        contacts: List[Contact] = self.db.exec(
+            select(Contact).options(joinedload(Contact.satellite))
+        ).all()
+
+        return list(rf_times) + list(contacts)
+
+    def schedule_rf(self, request: RFTimeRequestModel) -> GeneralContactResponseModel:
+        rf_time = self._map_rftime_model_to_object(request)
+        self._schedule(rf_time)
+        rf_time = self.db.get(RFTime, rf_time.id)
+        if not rf_time:
+            raise ValueError("RFTime not found in the DB")
+        return map_to_response_model(rf_time)
+        return
+
+    def schedule_contact(
+        self, request: ContactRequestModel
+    ) -> GeneralContactResponseModel:
+        contact = self._map_contact_model_to_object(request)
+        self._schedule(contact)
+        contact = self.db.get(Contact, contact.id)
+        if not contact:
+            raise ValueError("Contact not found in the DB")
+        return map_to_response_model(contact)
+
+    def init_db_contact_times(self):
         tle1 = """SCISAT 1
         1 27858U 03036A   24298.42572809  .00002329  00000+0  31378-3 0  9994
         2 27858  73.9300 283.7690 0006053 131.3701 228.7996 14.79804256142522"""
@@ -48,245 +74,214 @@ def init_db_contact_times(db: Session):
 
         items = [s1, s2, g1, g2, g3]
         for item in items:
-            db.add(item)
-            db.commit()
-            db.refresh(item)
+            self.db.add(item)
+            self.db.commit()
+            self.db.refresh(item)
 
+    def _schedule(self, request: Union[RFTime, Contact]):
+        self.db.add(request)
+        self.db.commit()
+        self.db.refresh(request)
 
-def get_db_contact_times(db: Session) -> List[GeneralContact]:
-    with db as db:
-        _db_contact_times: List[GeneralContact] = list(db.exec(select(RFTime)).all())
-        _db_contact_times.extend(list(db.exec(select(Contact)).all()))
-        return _db_contact_times
+        current = self.get_db_contact_times()
+        current.sort(key=lambda v: v.end_time if isinstance(v, RFTime) else v.los)
 
+        updated_contact_times = self._algo(current)
 
-def schedule(request: GeneralContact, db: Session):
-    db.add(request)
-    db.commit()
-    db.refresh(request)
+        for contact in updated_contact_times:
+            self.db.merge(contact)
 
-    # Retrieve all requests from the database
-    current: List[GeneralContact] = get_db_contact_times(db)
-    current.sort(key=lambda v: v.end_time if isinstance(v, RFTime) else v.los)
+        self.db.commit()
 
-    # Update the contact times using the algorithm
-    updated_contact_times = algo(current, db)
+    # Move all your existing helper methods here, converting them to instance methods
+    # Remember to remove the db parameter and use self.db instead
+    def _algo(self, reqs: List[GeneralContact]) -> List[GeneralContact]:
+        bookings: List[GeneralContact] = []
 
-    # Update the database with the new contact times
-    for contact in updated_contact_times:
-        db.merge(contact)
-
-    db.commit()
-
-
-def schedule_rf(request: RFTimeRequestModel, db: Session):
-    with db as db:
-        # Map the request to an RFTime object
-        rf_time: RFTime = _map_rftime_model_to_object(request, db)
-        schedule(rf_time, db)
-
-
-def schedule_contact(request: ContactRequestModel, db: Session):
-    with db as db:
-        # Map the request to an RFTime object
-        contact: Contact = _map_contact_model_to_object(request, db)
-        schedule(contact, db)
-
-
-def algo(reqs: List[GeneralContact], db: Session) -> List[GeneralContact]:
-    bookings: List[GeneralContact] = []
-
-    requests: List[GeneralContact] = deepcopy(reqs)
-    req: GeneralContact
-    for req in requests:
-        if isinstance(req, Contact):
-            booking = Contact(
-                mission=req.mission,
-                satellite=req.satellite,
-                station=req.station,
-                uplink=bool(req.uplink),
-                telemetry=bool(req.telemetry),
-                science=bool(req.science),
-                aos=req.aos,
-                rf_on=req.rf_on,
-                rf_off=req.rf_off,
-                los=req.los,
-                orbit=req.orbit,
-            )
-            bookings.append(booking)
-            requests.remove(req)
-
-    slots = get_slots(requests, db)
-
-    # not the most optimal; complexity O(S*R) where S is Slots, and R is Requests
-    # does not consider any edge cases (ex. no more room for scheduling - it would schedule in the sequential order)
-    for slot in slots:
-        if len(requests) == 0:
-            break
+        requests: List[GeneralContact] = deepcopy(reqs)
+        req: GeneralContact
         for req in requests:
+            if isinstance(req, Contact):
+                booking = Contact(
+                    mission=req.mission,
+                    satellite=req.satellite,
+                    station=req.station,
+                    uplink=bool(req.uplink),
+                    telemetry=bool(req.telemetry),
+                    science=bool(req.science),
+                    aos=req.aos,
+                    rf_on=req.rf_on,
+                    rf_off=req.rf_off,
+                    los=req.los,
+                    orbit=req.orbit,
+                )
+                bookings.append(booking)
+                requests.remove(req)
 
-            # determine the end time of last scheduled request (ensure no conflicts)
-            if len(bookings) != 0:
-                last = bookings[len(bookings) - 1]
-                last_end_time = last.end_time if isinstance(last, RFTime) else last.los
-                if slot.start < last_end_time:
-                    break  # overlap with scheduled request
+        slots = self._get_slots(requests)
 
-            if isinstance(req, RFTime):
-                if (req.start_time <= slot.start <= req.end_time) and (
-                    req.start_time <= slot.end <= req.end_time
-                ):  # The time frame of slot must fit in the request
-                    if (
-                        slot.sat.name == req.satellite.name and req.timeRemaining >= 0
-                    ):  # The time slot must be able to service the satellite
-                        booking = RFTime(
-                            mission=req.mission,
-                            satellite=req.satellite,
-                            station=slot.gs,
-                            uplink=req.uplink,
-                            telemetry=req.telemetry,
-                            science=req.science,
-                            start_time=slot.start,
-                            end_time=slot.end,
-                        )
-                        bookings.append(booking)
+        # not the most optimal; complexity O(S*R) where S is Slots, and R is Requests
+        # does not consider any edge cases (ex. no more room for scheduling - it would schedule in the sequential order)
+        for slot in slots:
+            if len(requests) == 0:
+                break
+            for req in requests:
 
-                        # decrease the time remaining
-                        # need to change logic such that all passes specified in request are used
-                        req.set_time_remaining(int(slot.dur))
-                        req.decrease_pass()
-
-                        if req.timeRemaining <= 0:
-                            requests.remove(req)  # remove from the list of requests
-                        break
-    return bookings
-
-
-def get_slots(requests: List[GeneralContact], db: Session) -> List[Visibility]:
-    # integrate with gs_mock to filter out unavailable times
-    return get_visibilities(requests=requests, db=db)
-
-
-def get_satellites(db: Session) -> Dict[str, Satellite]:
-    satellites: List[Satellite] = list(db.exec(select(Satellite)).all())
-    return {str(sat.id): sat for sat in satellites}
-
-
-def get_ground_stations(db: Session) -> List[GroundStation]:
-    return list(db.exec(select(GroundStation)).all())
-
-
-def get_visibilities(requests: List[GeneralContact], db: Session) -> List[Visibility]:
-    """
-    Get the availability windows for the all the requests in the list
-    Return list of Visibility objects
-    """
-    ts = load.timescale()
-
-    # in a final implementation ground station (gss) list needs to be retrieved from the DB
-    satellites: Dict[str, Satellite] = get_satellites(db)
-    # determine the lower and higher time bound for visibility search
-    lowest = datetime.strptime("9999-01-01T00:00:00", time_format)
-    highest = datetime.strptime("1900-01-01T00:00:00", time_format)
-
-    visibilities: List[Visibility] = []
-
-    # for the request of type Contact, for now we assume that aos and los parameters will comply with GSs station mask
-    for req in requests:
-        if isinstance(req, RFTime):
-            lowest = min(req.start_time, lowest)
-            highest = max(req.end_time, highest)
-        else:
-            r: Contact = req
-            lowest = min(req.aos, lowest)
-            highest = max(req.los, highest)
-
-        satellites[req.satellite.name] = req.satellite
-
-    static_ground_stations: List[GroundStation] = get_ground_stations(db)
-    # Three nested for-loops - horrible - I know; will be optimized later
-    for s in satellites.values():
-        for g in static_ground_stations:
-            t, events = s.get_sf_sat().find_events(
-                g.get_sf_geo_position(),
-                ts.from_datetime(lowest.replace(tzinfo=utc)),
-                ts.from_datetime(highest.replace(tzinfo=utc)),
-                g.mask,
-            )
-            current_rise = None
-
-            for ti, event in zip(t, events):  # type: ignore
-                if event == 0:
-                    current_rise = ti.utc_datetime().replace(tzinfo=None)
-                elif event == 2 and current_rise:
-                    visibilities.append(
-                        Visibility(
-                            gs=g,
-                            sat=s,
-                            start=current_rise,
-                            end=ti.utc_datetime().replace(tzinfo=None),
-                        )
+                # determine the end time of last scheduled request (ensure no conflicts)
+                if len(bookings) != 0:
+                    last = bookings[len(bookings) - 1]
+                    last_end_time = (
+                        last.end_time if isinstance(last, RFTime) else last.los
                     )
-                    current_rise = None
+                    if slot.start < last_end_time:
+                        break  # overlap with scheduled request
 
-    visibilities.sort(key=lambda v: v.start)
-    return visibilities
+                if isinstance(req, RFTime):
+                    if (req.start_time <= slot.start <= req.end_time) and (
+                        req.start_time <= slot.end <= req.end_time
+                    ):  # The time frame of slot must fit in the request
+                        if (
+                            slot.sat.name == req.satellite.name
+                            and req.timeRemaining >= 0
+                        ):  # The time slot must be able to service the satellite
+                            booking = RFTime(
+                                mission=req.mission,
+                                satellite=req.satellite,
+                                station=slot.gs,
+                                uplink=req.uplink,
+                                telemetry=req.telemetry,
+                                science=req.science,
+                                start_time=slot.start,
+                                end_time=slot.end,
+                            )
+                            bookings.append(booking)
 
+                            # decrease the time remaining
+                            # need to change logic such that all passes specified in request are used
+                            req.set_time_remaining(int(slot.dur))
+                            req.decrease_pass()
 
-def _map_rftime_model_to_object(req: RFTimeRequestModel, db: Session) -> RFTime:
-    static_satellites: Dict[str, Satellite] = get_satellites(db)
-    sat = get_satellite_by_id(req.satelliteId, static_satellites)
+                            if req.timeRemaining <= 0:
+                                requests.remove(req)  # remove from the list of requests
+                            break
+        return bookings
 
-    return RFTime(
-        mission=req.missionName,
-        satellite=sat,
-        start_time=req.startTime,
-        end_time=req.endTime,
-        uplink=req.uplinkTime,
-        telemetry=req.downlinkTime,
-        science=req.scienceTime,
-        pass_num=req.minimumNumberOfPasses,
-    )
+    def _get_slots(self, requests: List[GeneralContact]) -> List[Visibility]:
+        # integrate with gs_mock to filter out unavailable times
+        return self._get_visibilities(requests=requests)
 
+    def _get_visibilities(self, requests: List[GeneralContact]) -> List[Visibility]:
+        """
+        Get the availability windows for the all the requests in the list
+        Return list of Visibility objects
+        """
+        ts = load.timescale()
 
-def get_satellite_by_id(
-    satellite_id: str, satellites: Dict[str, Satellite]
-) -> Satellite:
-    sat = satellites.get(satellite_id)
-    if sat is None:
-        raise ValueError(
-            f"Satellite {satellite_id} does not exist in the static map.: {satellites}"
+        # in a final implementation ground station (gss) list needs to be retrieved from the DB
+        satellites: Dict[str, Satellite] = self._get_satellites()
+        # determine the lower and higher time bound for visibility search
+        lowest = datetime.strptime("9999-01-01T00:00:00", self.time_format)
+        highest = datetime.strptime("1900-01-01T00:00:00", self.time_format)
+
+        visibilities: List[Visibility] = []
+
+        # for the request of type Contact, for now we assume that aos and los parameters will comply with GSs station mask
+        for req in requests:
+            if isinstance(req, RFTime):
+                lowest = min(req.start_time, lowest)
+                highest = max(req.end_time, highest)
+            else:
+                r: Contact = req
+                lowest = min(req.aos, lowest)
+                highest = max(req.los, highest)
+
+            satellites[req.satellite.name] = req.satellite
+
+        static_ground_stations: List[GroundStation] = list(
+            self._get_ground_stations().values()
         )
-    return sat
+        # Three nested for-loops - horrible - I know; will be optimized later
+        for s in satellites.values():
+            for g in static_ground_stations:
+                t, events = s.get_sf_sat().find_events(
+                    g.get_sf_geo_position(),
+                    ts.from_datetime(lowest.replace(tzinfo=utc)),
+                    ts.from_datetime(highest.replace(tzinfo=utc)),
+                    g.mask,
+                )
+                current_rise = None
+
+                for ti, event in zip(t, events):  # type: ignore
+                    if event == 0:
+                        current_rise = ti.utc_datetime().replace(tzinfo=None)
+                    elif event == 2 and current_rise:
+                        visibilities.append(
+                            Visibility(
+                                gs=g,
+                                sat=s,
+                                start=current_rise,
+                                end=ti.utc_datetime().replace(tzinfo=None),
+                            )
+                        )
+                        current_rise = None
+
+        visibilities.sort(key=lambda v: v.start)
+        return visibilities
+
+    def _get_satellites(self) -> Dict[str, Satellite]:
+        satellites: List[Satellite] = list(self.db.exec(select(Satellite)).all())
+        return {str(sat.id): sat for sat in satellites}
+
+    def _get_ground_stations(self) -> Dict[str, GroundStation]:
+        ground_stations: List[GroundStation] = list(
+            self.db.exec(select(GroundStation)).all()
+        )
+        return {str(gs.name): gs for gs in ground_stations}
+
+    def _map_rftime_model_to_object(self, req: RFTimeRequestModel) -> RFTime:
+        static_satellites: Dict[str, Satellite] = self._get_satellites()
+        sat = static_satellites.get(req.satelliteId)
+        if not sat:
+            raise ValueError(f"Satellite {req.satelliteId} does not exist in the DB")
+        return RFTime(
+            mission=req.missionName,
+            satellite=sat,
+            start_time=req.startTime,
+            end_time=req.endTime,
+            uplink=req.uplinkTime,
+            telemetry=req.downlinkTime,
+            science=req.scienceTime,
+            pass_num=req.minimumNumberOfPasses,
+        )
+
+    def _map_contact_model_to_object(self, req: ContactRequestModel) -> Contact:
+        static_satellites: Dict[str, Satellite] = self._get_satellites()
+        static_ground_stations: Dict[str, GroundStation] = self._get_ground_stations()
+        sat = static_satellites.get(req.satelliteId)
+        gs = static_ground_stations.get(req.location)
+        if not sat:
+            raise ValueError(f"Satellite {req.satelliteId} does not exist in the DB")
+        if not gs:
+            raise ValueError(f"Ground station {req.location} does not exist in the DB")
+
+        return Contact(
+            mission=req.missionName,
+            satellite=sat,
+            station=gs,
+            uplink=req.uplink,
+            telemetry=req.telemetry,
+            science=req.science,
+            aos=req.aosTime,
+            rf_on=req.rfOnTime,
+            rf_off=req.rfOffTime,
+            los=req.losTime,
+        )
 
 
-def get_ground_station_by_name(
-    station_name: str, ground_stations: List[GroundStation]
-) -> GroundStation:
-    for station in ground_stations:
-        if station.name == station_name:
-            return station
-    raise ValueError(f"Ground Station {station_name} does not exist in the static map.")
-
-
-def _map_contact_model_to_object(req: ContactRequestModel, db: Session) -> Contact:
-    static_satellites: Dict[str, Satellite] = get_satellites(db)
-    static_ground_stations = get_ground_stations(db)
-    sat = get_satellite_by_id(req.satelliteId, static_satellites)
-    gs = get_ground_station_by_name(req.location, static_ground_stations)
-
-    return Contact(
-        mission=req.missionName,
-        satellite=sat,
-        station=gs,
-        uplink=req.uplink,
-        telemetry=req.telemetry,
-        science=req.science,
-        aos=req.aosTime,
-        rf_on=req.rfOnTime,
-        rf_off=req.rfOffTime,
-        los=req.losTime,
-    )
+# Service factory for dependency injection
+def get_scheduler_service() -> SchedulerService:
+    db = next(get_db())
+    return SchedulerService(db)
 
 
 def map_to_response_model(request: GeneralContact) -> GeneralContactResponseModel:
