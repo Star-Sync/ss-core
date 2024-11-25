@@ -25,13 +25,4 @@ class Visibility(SQLModel, table=True):  # type: ignore
         self.dur = (self.end - self.start).total_seconds()
 
     def __repr__(self):
-        if self.gs and self.sat:
-            return (
-                f"Visibility(gs={self.gs.name}, sat={self.sat.name}, "
-                f"start={self.start}, end={self.end}, dur={self.dur}s)"
-            )
-        else:
-            return (
-                f"Visibility(gs={self.gs_id}, sat={self.sat_id}, "
-                f"start={self.start}, end={self.end}, dur={self.dur}s)"
-            )
+        return f"Visibility(gs={self.gs}, sat={self.sat}, start={self.start}, end={self.end}, dur={self.dur}s)"

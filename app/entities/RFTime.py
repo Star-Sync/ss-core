@@ -13,7 +13,9 @@ class RFTime(SQLModel, table=True):  # type: ignore
     id: Optional[int] = Field(default=None, primary_key=True)
     mission: str
     satellite_id: int = Field(foreign_key="satellite.id")
-    satellite: "Satellite" = Relationship(back_populates="rf_times")
+    satellite: "Satellite" = Relationship(
+        back_populates="rf_times", sa_relationship_kwargs={"lazy": "immediate"}
+    )
     start_time: datetime
     end_time: datetime
     uplink: float
@@ -21,7 +23,9 @@ class RFTime(SQLModel, table=True):  # type: ignore
     science: float
     pass_num: int = Field(default=1)
     station_id: Optional[int] = Field(default=None, foreign_key="groundstation.id")
-    station: Optional["GroundStation"] = Relationship(back_populates="rf_times")
+    station: Optional["GroundStation"] = Relationship(
+        back_populates="rf_times", sa_relationship_kwargs={"lazy": "immediate"}
+    )
     timeRemaining: float
     passNumRemaining: int
 

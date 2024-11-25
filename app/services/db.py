@@ -8,7 +8,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://starsync:starsync@ss-db:5432/starsync"
 )
 
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL)
 
 
 def get_db():
@@ -16,7 +16,7 @@ def get_db():
     Dependency to provide a database session.
     Ensures the session is properly closed after use.
     """
-    with Session(engine) as session:
+    with Session(engine, expire_on_commit=False) as session:
         yield session
 
 

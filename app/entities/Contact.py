@@ -14,8 +14,12 @@ class Contact(SQLModel, table=True):  # type: ignore
     mission: str
     satellite_id: Optional[int] = Field(default=None, foreign_key="satellite.id")
     station_id: Optional[int] = Field(default=None, foreign_key="groundstation.id")
-    satellite: "Satellite" = Relationship(back_populates="contacts")
-    station: "GroundStation" = Relationship(back_populates="contacts")
+    satellite: "Satellite" = Relationship(
+        back_populates="contacts", sa_relationship_kwargs={"lazy": "immediate"}
+    )
+    station: "GroundStation" = Relationship(
+        back_populates="contacts", sa_relationship_kwargs={"lazy": "immediate"}
+    )
     uplink: bool
     telemetry: bool
     science: bool

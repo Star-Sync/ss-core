@@ -15,8 +15,12 @@ class Satellite(SQLModel, table=True):  # type: ignore
     science: float
     exCone: str
     priority: int
-    rf_times: list["RFTime"] = Relationship(back_populates="satellite")
-    contacts: list["Contact"] = Relationship(back_populates="satellite")
+    rf_times: list["RFTime"] = Relationship(
+        back_populates="satellite", sa_relationship_kwargs={"lazy": "immediate"}
+    )
+    contacts: list["Contact"] = Relationship(
+        back_populates="satellite", sa_relationship_kwargs={"lazy": "immediate"}
+    )
 
     def __init__(
         self,

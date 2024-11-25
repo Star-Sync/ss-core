@@ -23,8 +23,12 @@ class GroundStation(SQLModel, table=True):  # type: ignore
     uplink: float
     downlink: float
     science: float
-    rf_times: list["RFTime"] = Relationship(back_populates="station")
-    contacts: list["Contact"] = Relationship(back_populates="station")
+    rf_times: list["RFTime"] = Relationship(
+        back_populates="station", sa_relationship_kwargs={"lazy": "immediate"}
+    )
+    contacts: list["Contact"] = Relationship(
+        back_populates="station", sa_relationship_kwargs={"lazy": "immediate"}
+    )
 
     def __init__(
         self,
