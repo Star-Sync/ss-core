@@ -1,12 +1,34 @@
 from skyfield.api import wgs84
 from skyfield.toposlib import GeographicPosition
+from skyfield.api import wgs84
+from skyfield.toposlib import GeographicPosition
+from sqlmodel import Relationship, SQLModel, Field
+from typing import TYPE_CHECKING
+from app.entities.Contact import Contact
+from app.entities.RFTime import RFTime
 
 
-class GroundStation:
+class GroundStation(SQLModel, table=True):  # type: ignore
     """
     TODO:
     - there should be 2 values of mask parameter: Receive and Send; for now it's the same
     """
+
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    lat: float
+    lon: float
+    height: float
+    mask: int
+    uplink: float
+    downlink: float
+    science: float
+    rf_times: list["RFTime"] = Relationship(
+        back_populates="station", sa_relationship_kwargs={"lazy": "immediate"}
+    )
+    contacts: list["Contact"] = Relationship(
+        back_populates="station", sa_relationship_kwargs={"lazy": "immediate"}
+    )
 
     def __init__(
         self,

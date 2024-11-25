@@ -1,11 +1,26 @@
 from skyfield.sgp4lib import EarthSatellite
+from sqlmodel import Relationship, SQLModel, Field
+
+from app.entities.RFTime import RFTime
+from app.entities.Contact import Contact
 
 
-class Satellite:
-    """
-    TODO:
-    - have exCone as object instead of string
-    """
+class Satellite(SQLModel, table=True):  # type: ignore
+    # TODO: excone should be an object
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    tle: str
+    uplink: float
+    downlink: float
+    science: float
+    exCone: str
+    priority: int
+    rf_times: list["RFTime"] = Relationship(
+        back_populates="satellite", sa_relationship_kwargs={"lazy": "immediate"}
+    )
+    contacts: list["Contact"] = Relationship(
+        back_populates="satellite", sa_relationship_kwargs={"lazy": "immediate"}
+    )
 
     def __init__(
         self,

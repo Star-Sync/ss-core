@@ -2,3 +2,6 @@ fastapi[standard]
 uvicorn
 numpy
 skyfield
+python-dotenv
+sqlmodel
+psycopg2-binary
