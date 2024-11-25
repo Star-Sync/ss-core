@@ -15,6 +15,7 @@ from ..models.request import (
 )
 from ..services.db import get_db
 from sqlalchemy.orm import joinedload
+from collections import deque
 
 GeneralContact = Union[RFTime, Contact]
 
@@ -92,67 +93,89 @@ class SchedulerService:
 
         for req in requests:
             if isinstance(req, Contact):
-                booking = Contact(
-                    mission=req.mission,
-                    satellite=req.satellite,
-                    station=req.station,
-                    uplink=bool(req.uplink),
-                    telemetry=bool(req.telemetry),
-                    science=bool(req.science),
-                    aos=req.aos,
-                    rf_on=req.rf_on,
-                    rf_off=req.rf_off,
-                    los=req.los,
-                    orbit=req.orbit,
-                )
-                bookings.append(booking)
+                # booking = Contact(
+                #     mission=req.mission,
+                #     satellite=req.satellite,
+                #     station=req.station,
+                #     uplink=bool(req.uplink),
+                #     telemetry=bool(req.telemetry),
+                #     science=bool(req.science),
+                #     aos=req.aos,
+                #     rf_on=req.rf_on,
+                #     rf_off=req.rf_off,
+                #     los=req.los,
+                #     orbit=req.orbit,
+                # )
+                req.telemetry = bool(req.telemetry)
+                req.uplink = bool(req.uplink)
+                req.science = bool(req.science)
+                bookings.append(req)
                 requests.remove(req)
 
         slots = self._get_slots(requests)
 
         # not the most optimal; complexity O(S*R) where S is Slots, and R is Requests
         # does not consider any edge cases (ex. no more room for scheduling - it would schedule in the sequential order)
+        # conert the requests list to a queue
+
+        requestsq = deque(requests)
+        req = requestsq.popleft()
+        if not slots:
+            raise ValueError("No available slots for scheduling")
+
         for slot in slots:
+            print(slot)
             if len(requests) == 0:
                 break
-            for req in requests:
-                # determine the end time of last scheduled request (ensure no conflicts)
-                if len(bookings) != 0:
-                    last = bookings[len(bookings) - 1]
-                    last_end_time = (
-                        last.end_time if isinstance(last, RFTime) else last.los
-                    )
-                    if slot.start < last_end_time:
-                        break  # overlap with scheduled request
+            # for req in requestsq:
+            # determine the end time of last scheduled request (ensure no conflicts)
+            if len(bookings) != 0:
+                last = bookings[len(bookings) - 1]
+                last_end_time = last.end_time if isinstance(last, RFTime) else last.los
+                if slot.start < last_end_time:
+                    break  # overlap with scheduled request
 
-                if isinstance(req, RFTime):
-                    if (req.start_time <= slot.start <= req.end_time) and (
-                        req.start_time <= slot.end <= req.end_time
-                    ):  # The time frame of slot must fit in the request
-                        if (
-                            slot.sat.name == req.satellite.name
-                            and req.timeRemaining >= 0
-                        ):  # The time slot must be able to service the satellite
-                            booking = RFTime(
-                                mission=req.mission,
-                                satellite=req.satellite,
-                                station=slot.gs,
-                                uplink=req.uplink,
-                                telemetry=req.telemetry,
-                                science=req.science,
-                                start_time=slot.start,
-                                end_time=slot.end,
+            if isinstance(req, RFTime):
+                print("SLOT::", slot)
+                print("REQ::", req)
+                if (req.start_time <= slot.start <= req.end_time) and (
+                    req.start_time <= slot.end <= req.end_time
+                ):  # The time frame of slot must fit in the request
+                    if slot.sat.name == req.satellite.name and req.timeRemaining >= 0:
+
+                        # The time slot must be able to service the satellite
+                        # booking = RFTime(
+                        #     mission=req.mission,
+                        #     satellite=req.satellite,
+                        #     station=slot.gs,
+                        #     uplink=req.uplink,
+                        #     telemetry=req.telemetry,
+                        #     science=req.science,
+                        #     start_time=slot.start,
+                        #     end_time=slot.end,
+                        # )
+                        req.station = slot.gs
+                        req.start_time = slot.start
+                        req.end_time = slot.end
+                        bookings.append(req)
+
+                        # decrease the time remaining
+                        # need to change logic such that all passes specified in request are used
+                        req.set_time_remaining(int(slot.dur))
+                        req.decrease_pass()
+                        print(req.station)
+                        if req.station is not None:
+                            print(
+                                "RFTime scheduled for",
+                                req.satellite.name,
+                                "at",
+                                req.station.name,
                             )
-                            bookings.append(booking)
+                        else:
+                            raise ValueError("No ground station assigned to RFTime")
+                        if req.timeRemaining > 0:
+                            requestsq.append(req)
 
-                            # decrease the time remaining
-                            # need to change logic such that all passes specified in request are used
-                            req.set_time_remaining(int(slot.dur))
-                            req.decrease_pass()
-
-                            if req.timeRemaining <= 0:
-                                requests.remove(req)  # remove from the list of requests
-                            break
         return bookings
 
     def _get_slots(self, requests: List[GeneralContact]) -> List[Visibility]:
@@ -215,7 +238,7 @@ class SchedulerService:
 
     def _get_satellites(self) -> Dict[str, Satellite]:
         satellites: List[Satellite] = list(self.db.exec(select(Satellite)).all())
-        return {str(sat.id): sat for sat in satellites}
+        return {sat.name: sat for sat in satellites}
 
     def _get_ground_stations(self) -> Dict[str, GroundStation]:
         ground_stations: List[GroundStation] = list(

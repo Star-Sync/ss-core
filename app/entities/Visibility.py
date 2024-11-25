@@ -8,7 +8,7 @@ from typing import Optional
 class Visibility(SQLModel, table=True):  # type: ignore
     id: Optional[int] = Field(default=None, primary_key=True)
     gs_id: int = Field(foreign_key="groundstation.id")
-    gs: Optional[GroundStation] = Relationship()
+    gs: GroundStation = Relationship()
     sat_id: int = Field(foreign_key="satellite.id")
     sat: Satellite = Relationship()
     start: datetime
