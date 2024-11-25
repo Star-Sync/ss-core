@@ -1,5 +1,8 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
+
+from app.entities.RFTime import RFTime
+from app.entities.Contact import Contact
 from ..models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
@@ -38,7 +41,7 @@ def bookings(scheduler: SchedulerService = Depends(get_scheduler_service)):
 @router.post(
     "/rf-time",
     summary="Ground Station RF Time Request",
-    response_model=GeneralContactResponseModel,
+    response_model=RFTime,
     response_description="Request body",
 )
 def rf_time(
@@ -52,7 +55,7 @@ def rf_time(
 @router.post(
     "/contact",
     summary="Ground Station Contact Request",
-    response_model=GeneralContactResponseModel,
+    response_model=Contact,
     response_description="Simple success string for now",
 )
 def contact(

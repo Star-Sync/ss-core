@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 from datetime import datetime
 from sqlmodel import Session, select
-from skyfield.api import load, utc
+from skyfield.api import load, utc, Time
 from copy import deepcopy
 from ..entities.RFTime import RFTime
 from ..entities.Contact import Contact
@@ -24,42 +24,32 @@ class SchedulerService:
         self.db = db
         self.time_format = "%Y-%m-%dT%H:%M:%S"
 
-    def get_db_contact_times(self) -> List[Union[RFTime, Contact]]:
-        rf_times: List[RFTime] = self.db.exec(
-            select(RFTime).options(joinedload(RFTime.satellite))
-        ).all()
-        contacts: List[Contact] = self.db.exec(
-            select(Contact).options(joinedload(Contact.satellite))
-        ).all()
+    def get_db_contact_times(self) -> List[GeneralContact]:
+        rf_times: List[RFTime] = list(self.db.exec(select(RFTime)).all())
+        contacts: List[Contact] = list(self.db.exec(select(Contact)).all())
 
-        return list(rf_times) + list(contacts)
+        return rf_times + contacts
 
-    def schedule_rf(self, request: RFTimeRequestModel) -> GeneralContactResponseModel:
+    def schedule_rf(self, request: RFTimeRequestModel) -> RFTime:
         rf_time = self._map_rftime_model_to_object(request)
         self._schedule(rf_time)
         rf_time = self.db.get(RFTime, rf_time.id)
         if not rf_time:
             raise ValueError("RFTime not found in the DB")
-        return map_to_response_model(rf_time)
-        return
 
-    def schedule_contact(
-        self, request: ContactRequestModel
-    ) -> GeneralContactResponseModel:
+        return rf_time
+
+    def schedule_contact(self, request: ContactRequestModel) -> Contact:
         contact = self._map_contact_model_to_object(request)
         self._schedule(contact)
         contact = self.db.get(Contact, contact.id)
         if not contact:
             raise ValueError("Contact not found in the DB")
-        return map_to_response_model(contact)
+        return contact
 
     def init_db_contact_times(self):
-        tle1 = """SCISAT 1
-        1 27858U 03036A   24298.42572809  .00002329  00000+0  31378-3 0  9994
-        2 27858  73.9300 283.7690 0006053 131.3701 228.7996 14.79804256142522"""
-        tle2 = """NEOSSAT
-        1 39089U 13009D   24298.50343230  .00000620  00000+0  23091-3 0  9992
-        2 39089  98.4036 122.5021 0010164 233.8050 126.2197 14.35350046610553"""
+        tle1 = """SCISAT 1\n1 27858U 03036A   24298.42572809  .00002329  00000+0  31378-3 0  9994\n2 27858  73.9300 283.7690 0006053 131.3701 228.7996 14.79804256142522"""
+        tle2 = """NEOSSAT\n1 39089U 13009D   24298.50343230  .00000620  00000+0  23091-3 0  9992\n2 39089  98.4036 122.5021 0010164 233.8050 126.2197 14.35350046610553"""
 
         s1 = Satellite(tle1, 150, 150, 150, "exCone", 4)
         s2 = Satellite(tle2, 150, 150, 150, "exCone", 4)
@@ -77,6 +67,7 @@ class SchedulerService:
             self.db.add(item)
             self.db.commit()
             self.db.refresh(item)
+        self.db.close()
 
     def _schedule(self, request: Union[RFTime, Contact]):
         self.db.add(request)
@@ -92,14 +83,13 @@ class SchedulerService:
             self.db.merge(contact)
 
         self.db.commit()
+        self.db.close()
 
     # Move all your existing helper methods here, converting them to instance methods
     # Remember to remove the db parameter and use self.db instead
-    def _algo(self, reqs: List[GeneralContact]) -> List[GeneralContact]:
+    def _algo(self, requests: List[GeneralContact]) -> List[GeneralContact]:
         bookings: List[GeneralContact] = []
 
-        requests: List[GeneralContact] = deepcopy(reqs)
-        req: GeneralContact
         for req in requests:
             if isinstance(req, Contact):
                 booking = Contact(
@@ -126,7 +116,6 @@ class SchedulerService:
             if len(requests) == 0:
                 break
             for req in requests:
-
                 # determine the end time of last scheduled request (ensure no conflicts)
                 if len(bookings) != 0:
                     last = bookings[len(bookings) - 1]
@@ -177,8 +166,8 @@ class SchedulerService:
         """
         ts = load.timescale()
 
-        # in a final implementation ground station (gss) list needs to be retrieved from the DB
-        satellites: Dict[str, Satellite] = self._get_satellites()
+        satellites: Dict[str, Satellite] = {}
+        static_ground_stations = list(self._get_ground_stations().values())
         # determine the lower and higher time bound for visibility search
         lowest = datetime.strptime("9999-01-01T00:00:00", self.time_format)
         highest = datetime.strptime("1900-01-01T00:00:00", self.time_format)
@@ -186,20 +175,16 @@ class SchedulerService:
         visibilities: List[Visibility] = []
 
         # for the request of type Contact, for now we assume that aos and los parameters will comply with GSs station mask
-        for req in requests:
-            if isinstance(req, RFTime):
-                lowest = min(req.start_time, lowest)
-                highest = max(req.end_time, highest)
+        for r in requests:
+            if isinstance(r, RFTime):
+                lowest = min(r.start_time, lowest)
+                highest = max(r.end_time, highest)
             else:
-                r: Contact = req
-                lowest = min(req.aos, lowest)
-                highest = max(req.los, highest)
+                lowest = min(r.aos, lowest)
+                highest = max(r.los, highest)
 
-            satellites[req.satellite.name] = req.satellite
+            satellites[r.satellite.name] = r.satellite
 
-        static_ground_stations: List[GroundStation] = list(
-            self._get_ground_stations().values()
-        )
         # Three nested for-loops - horrible - I know; will be optimized later
         for s in satellites.values():
             for g in static_ground_stations:
