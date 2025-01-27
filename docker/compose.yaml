@@ -36,13 +36,15 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HOSTNAME: localhost
+    volumes: 
+      - ../app/auth/realm-export.json:/opt/keycloak/data/import/realm-export.json
     ports:
       - "8080:8080"
     depends_on:
       - db
     networks:
       - server-network
-    command: start-dev
+    command: start-dev --import-realm
 
 networks:
   server-network:
