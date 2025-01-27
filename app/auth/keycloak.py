@@ -2,13 +2,14 @@ from keycloak import KeycloakOpenID
 from fastapi import HTTPException, status
 from typing import Dict
 
+
 class KeycloakService:
     def __init__(self):
         self.keycloak_openid = KeycloakOpenID(
             server_url="http://localhost:8080/",
             client_id="ss-frontend",
             realm_name="ss-realm",
-            client_secret_key=None
+            client_secret_key=None,
         )
         self.public_key = self._get_public_key()
 
@@ -27,8 +28,8 @@ class KeycloakService:
                 options={
                     "verify_signature": True,
                     "verify_aud": False,
-                    "verify_exp": True
-                }
+                    "verify_exp": True,
+                },
             )
         except Exception as e:
             raise HTTPException(
@@ -36,5 +37,6 @@ class KeycloakService:
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
 
 keycloak_service = KeycloakService()
