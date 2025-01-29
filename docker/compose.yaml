@@ -46,6 +46,18 @@ services:
       - server-network
     command: start-dev --import-realm
 
+  keycloak_init:
+    build:
+      context: ../
+      dockerfile: docker/keycloak.Dockerfile
+    networks:
+      - server-network
+    depends_on:
+      - keycloak
+    restart: on-failure
+    environment:
+      - PYTHONUNBUFFERED=1
+
 networks:
   server-network:
     driver: bridge

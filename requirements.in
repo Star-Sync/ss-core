@@ -2,6 +2,7 @@ fastapi[standard]
 uvicorn
 numpy
 skyfield
-python-jose[cryptography]
-python-keycloak
+python - jose[cryptography]
+python - keycloak
 httpx
+requests

@@ -1,11 +1,6 @@
 [project]
 name = "starsync"
-dependencies = [
-  "fastapi",
-  "uvicorn",
-  "numpy",
-  "pydantic"
-]
+dependencies = ["fastapi", "uvicorn", "numpy", "pydantic"]
 
 [tool.pytest.ini_options]
 testpaths = ["app/tests"]
