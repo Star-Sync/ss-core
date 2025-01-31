@@ -32,23 +32,23 @@ def create_test_users(keycloak_admin: KeycloakAdmin) -> None:
     """Create test users in Keycloak."""
     test_users: List[Dict] = [
         {
-            "username": "test_user1",
-            "email": "test1@example.com",
-            "firstName": "Test",
-            "lastName": "User1",
+            "username": "john",
+            "email": "john@gmail.com",
+            "firstName": "John",
+            "lastName": "Smith",
             "enabled": True,
             "credentials": [
-                {"type": "password", "value": "test123", "temporary": False}
+                {"type": "password", "value": "123", "temporary": False}
             ],
         },
         {
-            "username": "test_user2",
-            "email": "test2@example.com",
-            "firstName": "Test",
-            "lastName": "User2",
+            "username": "steve",
+            "email": "steve@gmail.com",
+            "firstName": "Steve",
+            "lastName": "Jobs",
             "enabled": True,
             "credentials": [
-                {"type": "password", "value": "test123", "temporary": False}
+                {"type": "password", "value": "123", "temporary": False}
             ],
         },
     ]
