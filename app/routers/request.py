@@ -18,7 +18,7 @@ from ..services.request import (
 
 router = APIRouter(
     prefix="/request",
-    tags=["request"],
+    tags=["Request"],
     responses={404: {"description": "Not found"}},
 )
 

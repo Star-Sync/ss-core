@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 import asyncio
 from datetime import datetime
 from typing import List, Optional
-from app.entities.GroundStation import GroundStation
 from app.entities.Satellite import Satellite
+from app.entities.GroundStation import GroundStation
 from app.models.request import GeneralContactResponseModel
 
 

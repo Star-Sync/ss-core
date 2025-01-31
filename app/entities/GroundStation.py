@@ -1,12 +1,26 @@
 from skyfield.api import wgs84
 from skyfield.toposlib import GeographicPosition
+from skyfield.api import wgs84
+from skyfield.toposlib import GeographicPosition
+from sqlmodel import Relationship, SQLModel, Field
+from typing import TYPE_CHECKING
 
 
-class GroundStation:
+class GroundStation(SQLModel, table=True):  # type: ignore
     """
     TODO:
     - there should be 2 values of mask parameter: Receive and Send; for now it's the same
     """
+
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    lat: float
+    lon: float
+    height: float
+    mask: int
+    uplink: float
+    downlink: float
+    science: float
 
     def __init__(
         self,
