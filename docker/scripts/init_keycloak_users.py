@@ -37,9 +37,7 @@ def create_test_users(keycloak_admin: KeycloakAdmin) -> None:
             "firstName": "John",
             "lastName": "Smith",
             "enabled": True,
-            "credentials": [
-                {"type": "password", "value": "123", "temporary": False}
-            ],
+            "credentials": [{"type": "password", "value": "123", "temporary": False}],
         },
         {
             "username": "steve",
@@ -47,9 +45,7 @@ def create_test_users(keycloak_admin: KeycloakAdmin) -> None:
             "firstName": "Steve",
             "lastName": "Jobs",
             "enabled": True,
-            "credentials": [
-                {"type": "password", "value": "123", "temporary": False}
-            ],
+            "credentials": [{"type": "password", "value": "123", "temporary": False}],
         },
     ]
 
