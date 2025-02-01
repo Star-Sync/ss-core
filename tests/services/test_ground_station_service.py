@@ -5,6 +5,7 @@ from app.models.ground_station import GroundStationModel
 from app.entities.GroundStation import GroundStation
 
 _ground_station_data = {
+    "id": 1,
     "name": "Test Station",
     "lat": 68.3,
     "lon": 133.5,
@@ -32,6 +33,25 @@ def test_create_ground_station(db_session):
     db_session.commit.assert_called_once()
     db_session.refresh.assert_called_once()
     assert result.name == _ground_station_data["name"]
+
+
+def test_update_ground_station_not_found(db_session):
+    updated_data = _ground_station_data.copy()
+    updated_data["name"] = "Updated Station"
+    ground_station_model = GroundStationModel(**updated_data)
+
+    db_session.query.return_value.filter.return_value.first.return_value = None
+
+    result = GroundStationService.update_ground_station(
+        db_session, ground_station_model
+    )
+
+    db_session.query.assert_called_once_with(GroundStation)
+    db_session.query.return_value.filter.assert_called_once()
+    db_session.commit.assert_called_once()
+    db_session.refresh.assert_called_once()
+    assert result.id == 1
+    assert result.name == "Updated Station"
 
 
 def test_get_ground_stations(db_session):

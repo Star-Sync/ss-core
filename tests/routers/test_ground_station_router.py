@@ -66,6 +66,27 @@ def test_create_ground_station():
     assert data["science"] == 100
 
 
+def test_update_ground_station():
+    mock_db_response = GroundStationModel(**_ground_station_data)
+
+    with patch.object(
+        GroundStationService, "update_ground_station", return_value=mock_db_response
+    ):
+        response = _client.post(_ver_prefix + "/gs", json=_ground_station_data)
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["name"] == "Test Station"
+    assert data["lat"] == 68.3
+    assert data["lon"] == 133.5
+    assert data["height"] == 100.0
+    assert data["mask"] == 5
+    assert data["uplink"] == 50
+    assert data["downlink"] == 100
+    assert data["science"] == 100
+
+
 def test_create_ground_station_invalid_json():
     invalid_data = _ground_station_data.copy()
     invalid_data.pop("mask")
