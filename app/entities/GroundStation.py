@@ -12,7 +12,7 @@ class GroundStation(SQLModel, table=True):  # type: ignore
     - there should be 2 values of mask parameter: Receive and Send; for now it's the same
     """
 
-    id: int = Field(default=None, primary_key=True)
+    id: int = Field(primary_key=True)
     name: str
     lat: float
     lon: float

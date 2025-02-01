@@ -1,15 +1,17 @@
-from app.models.ground_station import GroundStationModel
+from app.models.ground_station import GroundStationModel, GroundStationCreateModel
 from app.entities.GroundStation import GroundStation
 from sqlalchemy.orm import Session
 
 
 class GroundStationService:
     @staticmethod
-    def create_ground_station(db: Session, ground_station: GroundStationModel):
+    def create_ground_station(db: Session, ground_station: GroundStationCreateModel):
+        print("service request", ground_station)
         gs = GroundStation(**ground_station.model_dump())
         db.add(gs)
         db.commit()
         db.refresh(gs)
+        print("before return", gs)
         return gs
 
     @staticmethod

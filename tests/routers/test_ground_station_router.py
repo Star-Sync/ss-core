@@ -1,10 +1,7 @@
 from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
-from app.models.ground_station import GroundStationModel
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from app.models.ground_station import GroundStationModel, GroundStationCreateModel
 from app.main import app
 from app.services.db import get_db
 from app.services.ground_station import GroundStationService
@@ -21,7 +18,7 @@ app.dependency_overrides[get_db] = override_get_db
 _client = TestClient(app)
 _ver_prefix = "/api/v1"
 
-_ground_station_data = {
+_gs_data = {
     "id": 1,
     "name": "Test Station",
     "lat": 68.3,
@@ -46,16 +43,17 @@ def reset_mocks():
 
 
 def test_create_ground_station():
-    mock_db_response = GroundStationModel(**_ground_station_data)
+    mock_db_response = GroundStationModel(**_gs_data)
 
     with patch.object(
         GroundStationService, "create_ground_station", return_value=mock_db_response
     ):
-        response = _client.post(_ver_prefix + "/gs", json=_ground_station_data)
+        response = _client.post(_ver_prefix + "/gs", json=_gs_data)
 
     assert response.status_code == 200
 
     data = response.json()
+    assert data["id"] == 1
     assert data["name"] == "Test Station"
     assert data["lat"] == 68.3
     assert data["lon"] == 133.5
@@ -67,16 +65,17 @@ def test_create_ground_station():
 
 
 def test_update_ground_station():
-    mock_db_response = GroundStationModel(**_ground_station_data)
+    mock_db_response = GroundStationModel(**_gs_data)
 
     with patch.object(
         GroundStationService, "update_ground_station", return_value=mock_db_response
     ):
-        response = _client.post(_ver_prefix + "/gs", json=_ground_station_data)
+        response = _client.post(_ver_prefix + "/gs", json=_gs_data)
 
     assert response.status_code == 200
 
     data = response.json()
+    assert data["id"] == 1
     assert data["name"] == "Test Station"
     assert data["lat"] == 68.3
     assert data["lon"] == 133.5
@@ -88,7 +87,7 @@ def test_update_ground_station():
 
 
 def test_create_ground_station_invalid_json():
-    invalid_data = _ground_station_data.copy()
+    invalid_data = _gs_data.copy()
     invalid_data.pop("mask")
 
     response = _client.post(_ver_prefix + "/gs", json=invalid_data)
@@ -97,7 +96,7 @@ def test_create_ground_station_invalid_json():
 
 
 def test_get_ground_stations():
-    mock_db_response = GroundStationModel(**_ground_station_data)
+    mock_db_response = GroundStationModel(**_gs_data)
 
     with patch.object(
         GroundStationService, "get_ground_stations", return_value=[mock_db_response]
@@ -108,7 +107,7 @@ def test_get_ground_stations():
 
 
 def test_get_ground_station():
-    mock_db_response = GroundStationModel(**_ground_station_data)
+    mock_db_response = GroundStationModel(**_gs_data)
     gs_id = 1
 
     with patch.object(
