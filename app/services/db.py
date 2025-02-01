@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://star-sync:star-sync@ss-db:5433/starsync"
+    "DATABASE_URL", "postgresql://root:password@ss-db:5432/ss_database"
 )
 
 engine = create_engine(DATABASE_URL)
