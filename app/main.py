@@ -23,4 +23,4 @@ app.include_router(ground_station.router, prefix="/api/v1")
 
 @app.get("/", include_in_schema=False)
 async def root():
-    return get_swagger_ui_html(openapi_url="/openapi.json", title="Custom Swagger UI")
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Star Sync API")

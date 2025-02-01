@@ -25,6 +25,18 @@ def create_ground_station(request: GroundStationModel, db: Session = Depends(get
     return GroundStationModel(**new_gs.model_dump())
 
 
+# PUT /api/v1/gs/
+@router.put(
+    "/",
+    summary="Update a ground station",
+    response_model=GroundStationModel,
+    response_description="Ground station updated response",
+)
+def update_ground_station(request: GroundStationModel, db: Session = Depends(get_db)):
+    gs = GroundStationService.update_ground_station(db, request)
+    return GroundStationModel(**gs.model_dump())
+
+
 # GET /api/v1/gs
 @router.get(
     "/",

@@ -13,6 +13,22 @@ class GroundStationService:
         return gs
 
     @staticmethod
+    def update_ground_station(db: Session, ground_station: GroundStationModel):
+        existing_gs = (
+            db.query(GroundStation)
+            .filter(GroundStation.id == ground_station.id)
+            .first()
+        )
+        if existing_gs:
+            for key, value in ground_station.model_dump().items():
+                setattr(existing_gs, key, value)
+            db.commit()
+            db.refresh(existing_gs)
+            return existing_gs
+        else:
+            return GroundStationService.create_ground_station(db, ground_station)
+
+    @staticmethod
     def get_ground_stations(db: Session):
         return db.query(GroundStation).all()
 
