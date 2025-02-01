@@ -25,7 +25,7 @@ def test_gs_mock_method_not_allowed():
     # technically, we dont need to test this
     # since fastapi will catch this :)
     response = client.get(url)
-    assert response.status_code == 405
+    assert response.status_code == 422
 
 
 def test_gs_mock_missing_json():

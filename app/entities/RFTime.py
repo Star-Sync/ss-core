@@ -20,7 +20,7 @@ class RFTime(GeneralContact):
         telemetry: float,
         science: float,
         pass_num: int = 1,
-        station: Optional[GroundStation] = GroundStation(),
+        station: Optional[GroundStation] = None,
     ):
         super().__init__(mission, satellite, station)
         self.start_time = start_time
@@ -32,7 +32,7 @@ class RFTime(GeneralContact):
         self.timeRemaining = max(self.uplink, self.telemetry, self.science)
         self.passNumRemaining = pass_num
 
-    def get_priority_weight(self) -> int:
+    def get_priority_weight(self) -> float:
         tot_time = self.uplink + self.telemetry + self.science
         time_period = self.end_time - self.start_time
 
@@ -40,7 +40,7 @@ class RFTime(GeneralContact):
             tot_time / time_period.total_seconds()
         )
 
-    def set_time_remaining(self, time_booked: int) -> int:
+    def set_time_remaining(self, time_booked: int):
         self.timeRemaining = self.timeRemaining - time_booked
 
     def decrease_pass(self):

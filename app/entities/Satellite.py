@@ -1,11 +1,17 @@
 from skyfield.sgp4lib import EarthSatellite
+from sqlmodel import Relationship, SQLModel, Field
 
 
-class Satellite:
-    """
-    TODO:
-    - have exCone as object instead of string
-    """
+class Satellite(SQLModel, table=True):  # type: ignore
+    # TODO: excone should be an object
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    tle: str
+    uplink: float
+    downlink: float
+    science: float
+    exCone: str
+    priority: int
 
     def __init__(
         self,
