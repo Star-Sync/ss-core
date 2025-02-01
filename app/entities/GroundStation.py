@@ -3,7 +3,7 @@ from skyfield.toposlib import GeographicPosition
 from skyfield.api import wgs84
 from skyfield.toposlib import GeographicPosition
 from sqlmodel import Relationship, SQLModel, Field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 
 class GroundStation(SQLModel, table=True):  # type: ignore
@@ -24,6 +24,7 @@ class GroundStation(SQLModel, table=True):  # type: ignore
 
     def __init__(
         self,
+        id: Optional[int] = None,
         name: str = "",
         lat: float = 0,
         lon: float = 0,
@@ -33,6 +34,7 @@ class GroundStation(SQLModel, table=True):  # type: ignore
         downlink: float = 0,
         science: float = 0,
     ):
+        self.id = id
         self.name = name
         self.lat = lat
         self.lon = lon

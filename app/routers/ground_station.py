@@ -9,7 +9,7 @@ from app.services.db import get_db
 router = APIRouter(
     prefix="/gs",
     tags=["Ground Station"],
-    responses={404: {"description": "Not found"}},
+    responses={404: {"description": "Ground station not found"}},
 )
 
 
@@ -22,7 +22,7 @@ router = APIRouter(
 )
 def create_ground_station(request: GroundStationModel, db: Session = Depends(get_db)):
     new_gs = GroundStationService.create_ground_station(db, request)
-    return GroundStationModel(**new_gs.dict())
+    return GroundStationModel(**new_gs.model_dump())
 
 
 # GET /api/v1/gs
@@ -33,7 +33,7 @@ def create_ground_station(request: GroundStationModel, db: Session = Depends(get
 )
 def get_ground_stations(db: Session = Depends(get_db)):
     gss = GroundStationService.get_ground_stations(db)
-    return [GroundStationModel(**gs.dict()) for gs in gss]
+    return [GroundStationModel(**gs.model_dump()) for gs in gss]
 
 
 # GET /api/v1/gs/{gs_id}
@@ -43,13 +43,17 @@ def get_ground_stations(db: Session = Depends(get_db)):
 def get_ground_station(gs_id: int, db: Session = Depends(get_db)):
     gs = GroundStationService.get_ground_station(db, gs_id)
     if gs is None:
-        raise HTTPException(status_code=404, detail="Ground station not found")
-    return GroundStationModel(**gs.dict())
+        raise HTTPException(
+            status_code=404, detail=router.responses[404]["description"]
+        )
+    return GroundStationModel(**gs.model_dump())
 
 
 # DELETE /api/v1/gs/{gs_id}
 @router.delete("/{gs_id}", summary="Delete a ground station")
 def delete_ground_station(gs_id: int, db: Session = Depends(get_db)):
     if not GroundStationService.delete_ground_station(db, gs_id):
-        raise HTTPException(status_code=404, detail="Ground station not found")
+        raise HTTPException(
+            status_code=404, detail=router.responses[404]["description"]
+        )
     return {"detail": "Ground station deleted successfully"}

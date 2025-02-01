@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -6,6 +7,9 @@ class GroundStationModel(BaseModel):
     This is a Pydantic model class that represents the ground station.
     """
 
+    id: Optional[int] = Field(
+        None, description="ID of the ground station", examples=[1]
+    )
     name: str = Field(
         description="Name of the ground station",
         examples=["Inuvik Northwest Territories"],

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 class GroundStationService:
     @staticmethod
     def create_ground_station(db: Session, ground_station: GroundStationModel):
-        gs = GroundStation(**ground_station.dict())
+        gs = GroundStation(**ground_station.model_dump())
         db.add(gs)
         db.commit()
         db.refresh(gs)
