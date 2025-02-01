@@ -1,35 +1,36 @@
-name: ss-server
+name: star-sync
 
 services:
-    server:
+    ss-core:
         build:
             context: ../
             dockerfile: docker/Dockerfile
         ports:
-            - "5000:8000"
+            - "8000:8000"
         networks:
-            - server-network
+            - star-sync
         volumes:
             - ../app:/opt/app
             - ../requirements.txt:/opt/app/requirements.txt
 
     # eventually, we will need to load the environment vars from a file
-    db:
-        image: postgres:latest
-        environment:
-            POSTGRES_USER: user
-            POSTGRES_PASSWORD: password
-            POSTGRES_DB: mydatabase
-        ports:
-            - "5432:5432"
-        networks:
-            - server-network
-        volumes:
-            - db-data:/var/lib/postgresql/data
+    # db:
+    #     image: postgres:latest
+    #     environment:
+    #         POSTGRES_USER: user
+    #         POSTGRES_PASSWORD: password
+    #         POSTGRES_DB: mydatabase
+    #     ports:
+    #         - "5432:5432"
+    #     networks:
+    #         - star-sync
+    #     volumes:
+    #         - db-data:/var/lib/postgresql/data
 
 networks:
-    server-network:
-        driver: bridge
+  star-sync:
+    name: star-sync_star-sync
+    external: true
 
 volumes:
     db-data:
