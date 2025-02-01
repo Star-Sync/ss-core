@@ -1,0 +1,12 @@
+# logging_config.yaml
+version: 1
+disable_existing_loggers: False
+handlers:
+  graylog:
+    class: pygelf.GelfUdpHandler
+    host: localhost
+    port: 12201
+    _app_name: star-sync-core
+root:
+  handlers: [graylog]
+  level: INFO
