@@ -2,8 +2,8 @@ from skyfield.api import wgs84
 from skyfield.toposlib import GeographicPosition
 from skyfield.api import wgs84
 from skyfield.toposlib import GeographicPosition
-from sqlmodel import Relationship, SQLModel, Field
-from typing import TYPE_CHECKING, Optional
+from sqlmodel import SQLModel, Field
+from typing import Optional
 
 
 class GroundStation(SQLModel, table=True):  # type: ignore
