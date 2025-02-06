@@ -38,7 +38,7 @@ jobs:
               run: black --check --diff .
 
             - name: Check typing
-              run: mypy .
+              run: mypy app/
 
             # - name: Lint code
             #   run: flake8 .

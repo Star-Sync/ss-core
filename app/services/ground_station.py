@@ -1,3 +1,4 @@
+from sqlmodel import select
 from app.models.ground_station import GroundStationModel, GroundStationCreateModel
 from app.entities.GroundStation import GroundStation
 from sqlalchemy.orm import Session
@@ -16,11 +17,8 @@ class GroundStationService:
 
     @staticmethod
     def update_ground_station(db: Session, ground_station: GroundStationModel):
-        existing_gs = (
-            db.query(GroundStation)
-            .filter(GroundStation.id == ground_station.id)
-            .first()
-        )
+        statement = select(GroundStation).where(GroundStation.id == ground_station.id)
+        existing_gs = db.execute(statement).scalar_one_or_none()
         if existing_gs:
             for key, value in ground_station.model_dump().items():
                 setattr(existing_gs, key, value)
@@ -28,7 +26,8 @@ class GroundStationService:
             db.refresh(existing_gs)
             return existing_gs
         else:
-            return GroundStationService.create_ground_station(db, ground_station)
+            create_model = GroundStationCreateModel(**ground_station.model_dump())
+            return GroundStationService.create_ground_station(db, create_model)
 
     @staticmethod
     def get_ground_stations(db: Session):
@@ -36,13 +35,13 @@ class GroundStationService:
 
     @staticmethod
     def get_ground_station(db: Session, gs_id: int):
-        return db.query(GroundStation).filter(GroundStation.id == gs_id).first()
+        statement = select(GroundStation).where(GroundStation.id == gs_id)
+        return db.execute(statement).scalar_one()
 
     @staticmethod
     def delete_ground_station(db: Session, gs_id: int):
-        ground_station = (
-            db.query(GroundStation).filter(GroundStation.id == gs_id).first()
-        )
+        statement = select(GroundStation).where(GroundStation.id == gs_id)
+        ground_station = db.execute(statement).scalar_one_or_none()
         if ground_station:
             db.delete(ground_station)
             db.commit()

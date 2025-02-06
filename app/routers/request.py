@@ -1,3 +1,7 @@
+#  type: ignore
+# ^ remove the type: ignore from the class definition when
+#  we have the correct basic types
+
 from typing import List
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse

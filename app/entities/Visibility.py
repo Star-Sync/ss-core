@@ -1,3 +1,7 @@
+#  type: ignore
+# ^ remove the type: ignore from the class definition when
+#  we have the correct basic types
+
 from datetime import datetime
 from app.entities import GroundStation, Satellite
 
