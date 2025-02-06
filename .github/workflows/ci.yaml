@@ -23,7 +23,13 @@ jobs:
                   python-version: ${{ env.PYTHON_VERSION }}
 
             - uses: actions/cache@v3
-
+              with:
+                  path: |
+                      ~/.cache/pip
+                      venv/
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
             - name: Install quality tools
               run: |
                   pipx install black flake8 mypy isort safety
@@ -62,7 +68,13 @@ jobs:
                   python-version: ${{ env.PYTHON_VERSION }}
 
             - uses: actions/cache@v3
-              # ... cache config
+              with:
+                  path: |
+                      ~/.cache/pip
+                      venv/
+                  key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-
 
             - name: Install dependencies
               run: |
