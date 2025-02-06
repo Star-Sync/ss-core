@@ -37,8 +37,8 @@ jobs:
             - name: Check formatting
               run: black --check --diff .
 
-            # - name: Check imports
-            #   run: isort --check-only .
+            - name: Check typing
+              run: mypy .
 
             # - name: Lint code
             #   run: flake8 .

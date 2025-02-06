@@ -15,9 +15,7 @@ certifi==2024.8.30
 click==8.1.7
     # via black
 coverage[toml]==7.6.4
-    # via
-    #   coverage
-    #   pytest-cov
+    # via pytest-cov
 exceptiongroup==1.2.2
     # via
     #   anyio
@@ -34,8 +32,12 @@ idna==3.10
     #   httpx
 iniconfig==2.0.0
     # via pytest
+mypy==1.15.0
+    # via -r requirements-dev.in
 mypy-extensions==1.0.0
-    # via black
+    # via
+    #   black
+    #   mypy
 packaging==24.2
     # via
     #   black
@@ -60,8 +62,10 @@ tomli==2.0.2
     # via
     #   black
     #   coverage
+    #   mypy
     #   pytest
 typing-extensions==4.12.2
     # via
     #   anyio
     #   black
+    #   mypy
