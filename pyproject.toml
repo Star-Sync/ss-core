@@ -11,3 +11,7 @@ dependencies = [
 testpaths = ["tests"]
 log_cli_level = "INFO"
 pythonpath = "."
+
+[[tool.mypy.overrides]]
+module = "skyfield.*"
+ignore_missing_imports = true
