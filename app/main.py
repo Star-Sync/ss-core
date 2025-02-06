@@ -17,7 +17,7 @@ app.add_middleware(
 
 app.include_router(gs.router, prefix="/api/v1")
 app.include_router(hello.router, prefix="/api/v1")
-app.include_router(request.router, prefix="/api/v1") #type: ignore
+app.include_router(request.router, prefix="/api/v1")  # type: ignore
 app.include_router(ground_station.router, prefix="/api/v1")
 
 

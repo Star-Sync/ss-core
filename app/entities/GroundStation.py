@@ -45,7 +45,11 @@ class GroundStation(SQLModel, table=True):  # type: ignore
         self.science = science
 
     def get_sf_geo_position(self) -> GeographicPosition:
-        return wgs84.latlon(latitude_degrees=self.lat, longitude_degrees=self.lon, elevation_m=self.height)
+        return wgs84.latlon(
+            latitude_degrees=self.lat,
+            longitude_degrees=self.lon,
+            elevation_m=self.height,
+        )
 
     def __repr__(self):
         return f"GroundStation(name={self.name})"
