@@ -15,7 +15,7 @@ class GroundStationService:
     @staticmethod
     def update_ground_station(db: Session, ground_station: GroundStationModel):
         statement = select(GroundStation).where(GroundStation.id == ground_station.id)
-        existing_gs = db.execute(statement).scalar_one_or_none()
+        existing_gs = db.exec(statement).first()
         if existing_gs:
             for key, value in ground_station.model_dump().items():
                 setattr(existing_gs, key, value)
@@ -28,7 +28,8 @@ class GroundStationService:
 
     @staticmethod
     def get_ground_stations(db: Session):
-        return db.query(GroundStation).all()
+        statement = select(GroundStation)
+        return db.exec(statement).all()
 
     @staticmethod
     def get_ground_station(db: Session, gs_id: int):
@@ -38,7 +39,7 @@ class GroundStationService:
     @staticmethod
     def delete_ground_station(db: Session, gs_id: int):
         statement = select(GroundStation).where(GroundStation.id == gs_id)
-        ground_station = db.execute(statement).scalar_one_or_none()
+        ground_station = db.exec(statement).first()
         if ground_station:
             db.delete(ground_station)
             db.commit()
