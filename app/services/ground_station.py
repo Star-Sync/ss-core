@@ -7,12 +7,10 @@ from sqlalchemy.orm import Session
 class GroundStationService:
     @staticmethod
     def create_ground_station(db: Session, ground_station: GroundStationCreateModel):
-        print("service request", ground_station)
         gs = GroundStation(**ground_station.model_dump())
         db.add(gs)
         db.commit()
         db.refresh(gs)
-        print("before return", gs)
         return gs
 
     @staticmethod
@@ -36,7 +34,7 @@ class GroundStationService:
     @staticmethod
     def get_ground_station(db: Session, gs_id: int):
         statement = select(GroundStation).where(GroundStation.id == gs_id)
-        return db.execute(statement).scalar_one()
+        return db.exec(statement).first()
 
     @staticmethod
     def delete_ground_station(db: Session, gs_id: int):
@@ -45,5 +43,6 @@ class GroundStationService:
         if ground_station:
             db.delete(ground_station)
             db.commit()
+            # if need be, we can return the deleted object; for now it's just a success status
             return True
         return False
