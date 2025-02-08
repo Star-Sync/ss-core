@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List
 from app.models.ground_station import GroundStationModel
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 from app.services.ground_station import GroundStationService, GroundStationCreateModel
 from app.services.db import get_db
 

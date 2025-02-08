@@ -1,7 +1,6 @@
-from sqlmodel import select
+from sqlmodel import select, Session
 from app.models.ground_station import GroundStationModel, GroundStationCreateModel
 from app.entities.GroundStation import GroundStation
-from sqlalchemy.orm import Session
 
 
 class GroundStationService:
