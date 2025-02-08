@@ -1,26 +1,21 @@
+from sqlmodel import select, Session
 from app.models.ground_station import GroundStationModel, GroundStationCreateModel
 from app.entities.GroundStation import GroundStation
-from sqlalchemy.orm import Session
 
 
 class GroundStationService:
     @staticmethod
     def create_ground_station(db: Session, ground_station: GroundStationCreateModel):
-        print("service request", ground_station)
         gs = GroundStation(**ground_station.model_dump())
         db.add(gs)
         db.commit()
         db.refresh(gs)
-        print("before return", gs)
         return gs
 
     @staticmethod
     def update_ground_station(db: Session, ground_station: GroundStationModel):
-        existing_gs = (
-            db.query(GroundStation)
-            .filter(GroundStation.id == ground_station.id)
-            .first()
-        )
+        statement = select(GroundStation).where(GroundStation.id == ground_station.id)
+        existing_gs = db.exec(statement).first()
         if existing_gs:
             for key, value in ground_station.model_dump().items():
                 setattr(existing_gs, key, value)
@@ -28,23 +23,26 @@ class GroundStationService:
             db.refresh(existing_gs)
             return existing_gs
         else:
-            return GroundStationService.create_ground_station(db, ground_station)
+            create_model = GroundStationCreateModel(**ground_station.model_dump())
+            return GroundStationService.create_ground_station(db, create_model)
 
     @staticmethod
     def get_ground_stations(db: Session):
-        return db.query(GroundStation).all()
+        statement = select(GroundStation)
+        return db.exec(statement).all()
 
     @staticmethod
     def get_ground_station(db: Session, gs_id: int):
-        return db.query(GroundStation).filter(GroundStation.id == gs_id).first()
+        statement = select(GroundStation).where(GroundStation.id == gs_id)
+        return db.exec(statement).first()
 
     @staticmethod
     def delete_ground_station(db: Session, gs_id: int):
-        ground_station = (
-            db.query(GroundStation).filter(GroundStation.id == gs_id).first()
-        )
+        statement = select(GroundStation).where(GroundStation.id == gs_id)
+        ground_station = db.exec(statement).first()
         if ground_station:
             db.delete(ground_station)
             db.commit()
+            # if need be, we can return the deleted object; for now it's just a success status
             return True
         return False
