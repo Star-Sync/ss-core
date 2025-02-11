@@ -1,4 +1,6 @@
+import uuid
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from typing import List
 from app.models.satellite import SatelliteModel, SatelliteCreateModel
 from sqlmodel import Session
@@ -6,7 +8,7 @@ from app.services.db import get_db
 from app.services.satellite import SatelliteService
 
 router = APIRouter(
-    prefix="/satellites",
+    prefix="/satellite",
     tags=["Satellite"],
     responses={404: {"description": "Satellite not found"}},
 )
@@ -27,7 +29,7 @@ def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db
 # PUT /api/v1/satellite/
 @router.put(
     "/",
-    summary="Update a satellite",
+    summary="Update a Satellite",
     response_model=SatelliteModel,
     response_description="Satellite updated response",
 )
@@ -53,7 +55,7 @@ def get_satellites(db: Session = Depends(get_db)):
     summary="Get a satellite by id",
     response_model=SatelliteModel,
 )
-def get_satellite(satellite_id: int, db: Session = Depends(get_db)):
+def get_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
     satellite = SatelliteService.get_satellite(db, satellite_id)
     if satellite is None:
         raise HTTPException(
@@ -63,8 +65,8 @@ def get_satellite(satellite_id: int, db: Session = Depends(get_db)):
 
 
 # DELETE /api/v1/satellite/{satellite_id}
-@router.delete("/{satellite_id}", summary="Delete a satellite")
-def delete_satellite(satellite_id: int, db: Session = Depends(get_db)):
+@router.delete("/{satellite_id}", summary="Delete a Satellite")
+def delete_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
     if not SatelliteService.delete_satellite(db, satellite_id):
         raise HTTPException(
             status_code=404, detail=router.responses[404]["description"]

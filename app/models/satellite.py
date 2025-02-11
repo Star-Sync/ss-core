@@ -1,7 +1,12 @@
-from typing import Optional
+from typing import List, Optional
 import uuid
 from pydantic import BaseModel, Field
 from app.models.exclusion_cone import ExclusionConeModel
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .exclusion_cone import ExclusionConeModel
 
 
 class SatelliteCreateModel(BaseModel):
@@ -34,8 +39,8 @@ class SatelliteModel(SatelliteCreateModel):
         description="ID of the satellite",
         examples=["7b16adda-0dfc-48d0-9902-0da6da504a71"],
     )
-    ex_cones: Optional[list[ExclusionConeModel]] = Field(
+    ex_cones: Optional[List["ExclusionConeModel"]] = Field(
         default_factory=list,
         description="List of exclusion cones",
-        examples=[["4ff2dab7-bffe-414d-88a5-1826b9fea8df"]],
+        examples=[[]],
     )

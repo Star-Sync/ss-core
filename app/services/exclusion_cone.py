@@ -1,3 +1,4 @@
+import uuid
 from sqlmodel import select, Session
 from app.models.exclusion_cone import ExclusionConeModel, ExclusionConeCreateModel
 from app.entities.ExclusionCone import ExclusionCone
@@ -32,12 +33,12 @@ class ExclusionConeService:
         return db.exec(statement).all()
 
     @staticmethod
-    def get_exclusion_cone(db: Session, ex_cone_id: int):
+    def get_exclusion_cone(db: Session, ex_cone_id: uuid.UUID):
         statement = select(ExclusionCone).where(ExclusionCone.id == ex_cone_id)
         return db.exec(statement).first()
 
     @staticmethod
-    def delete_exclusion_cone(db: Session, ex_cone_id: int):
+    def delete_exclusion_cone(db: Session, ex_cone_id: uuid.UUID):
         statement = select(ExclusionCone).where(ExclusionCone.id == ex_cone_id)
         exclusion_cone = db.exec(statement).first()
         if exclusion_cone:

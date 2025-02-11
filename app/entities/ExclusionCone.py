@@ -1,9 +1,6 @@
 # from __future__ import annotations
 import uuid
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional
-
-from app.entities.GroundStation import GroundStation
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,24 +14,22 @@ class ExclusionCone(SQLModel, table=True):  # type: ignore
     mission: str
     angle_limit: float
     interfering_satellite: str
+    satellite_id: uuid.UUID = Field(foreign_key="satellites.id")
 
-    satellite_id: uuid.UUID = Field(
-        foreign_key="satellites.id"
-    )  # Foreign key to Satellite
-    satellite: Optional["Satellite"] | None = Relationship(
+    # , sa_relationship_kwargs={"lazy": "immediate"}
+    satellite: "Satellite" = Relationship(
         back_populates="ex_cones", sa_relationship_kwargs={"lazy": "immediate"}
     )
-    gs_id: int = Field(foreign_key="ground_stations.id")  # Foreign key to GroundStation
-    # gs: Optional[GroundStation] = Relationship(back_populates="ex_cones"),
+    gs_id: int = Field(foreign_key="ground_stations.id")
 
     def __init__(
         self,
-        id: Optional[int] = None,
+        id: uuid.UUID = uuid.uuid4(),
         mission: str = "",
         angle_limit: float = 0,
         interfering_satellite: str = "",
-        satellite_id: Optional[uuid.UUID] = None,
-        gs_id: Optional[int] = None,
+        satellite_id: uuid.UUID = uuid.uuid4(),
+        gs_id: int = 1,
         # satellite_id: int = Field(
         #     foreign_key="satellites.id"  # Foreign key to Satellite
         # ),

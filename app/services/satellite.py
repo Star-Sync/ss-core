@@ -1,4 +1,7 @@
+import uuid
 from sqlmodel import select, Session
+from sqlalchemy.orm import joinedload
+from app.models.exclusion_cone import ExclusionConeModel
 from app.models.satellite import SatelliteModel, SatelliteCreateModel
 from app.entities.Satellite import Satellite
 
@@ -28,16 +31,20 @@ class SatelliteService:
 
     @staticmethod
     def get_satellites(db: Session):
-        statement = select(Satellite)
+        statement = select(Satellite).options(joinedload(Satellite.ex_cones))
         return db.exec(statement).all()
 
     @staticmethod
-    def get_satellite(db: Session, sat_id: int):
-        statement = select(Satellite).where(Satellite.id == sat_id)
+    def get_satellite(db: Session, sat_id: uuid.UUID):
+        statement = (
+            select(Satellite)
+            .where(Satellite.id == sat_id)
+            .options(joinedload(Satellite.ex_cones))
+        )
         return db.exec(statement).first()
 
     @staticmethod
-    def delete_satellite(db: Session, sat_id: int):
+    def delete_satellite(db: Session, sat_id: uuid.UUID):
         statement = select(Satellite).where(Satellite.id == sat_id)
         satellite = db.exec(statement).first()
         if satellite:

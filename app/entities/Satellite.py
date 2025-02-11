@@ -3,6 +3,7 @@ import uuid
 from skyfield.sgp4lib import EarthSatellite
 from sqlmodel import Relationship, SQLModel, Field
 from typing import List, Optional
+from typing import TYPE_CHECKING
 from app.entities.ExclusionCone import ExclusionCone
 
 
@@ -18,7 +19,7 @@ class Satellite(SQLModel, table=True):  # type: ignore
     priority: int
 
     ex_cones: list["ExclusionCone"] = Relationship(
-        back_populates="satellite"
+        back_populates="satellite", sa_relationship_kwargs={"lazy": "immediate"}
     )  # , sa_relationship_kwargs={"lazy": "immediate"}
 
     # def __init__(

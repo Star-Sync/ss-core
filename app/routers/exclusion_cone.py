@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from app.models.exclusion_cone import ExclusionConeModel, ExclusionConeCreateModel
@@ -58,7 +59,7 @@ def get_exclusion_cones(db: Session = Depends(get_db)):
     summary="Get a exclusion_cone by id",
     response_model=ExclusionConeModel,
 )
-def get_exclusion_cone(exclusion_cone_id: int, db: Session = Depends(get_db)):
+def get_exclusion_cone(exclusion_cone_id: uuid.UUID, db: Session = Depends(get_db)):
     exclusion_cone = ExclusionConeService.get_exclusion_cone(db, exclusion_cone_id)
     if exclusion_cone is None:
         raise HTTPException(
@@ -69,7 +70,7 @@ def get_exclusion_cone(exclusion_cone_id: int, db: Session = Depends(get_db)):
 
 # DELETE /api/v1/exclusion_cone/{exclusion_cone_id}
 @router.delete("/{exclusion_cone_id}", summary="Delete a exclusion_cone")
-def delete_exclusion_cone(exclusion_cone_id: int, db: Session = Depends(get_db)):
+def delete_exclusion_cone(exclusion_cone_id: uuid.UUID, db: Session = Depends(get_db)):
     if not ExclusionConeService.delete_exclusion_cone(db, exclusion_cone_id):
         raise HTTPException(
             status_code=404, detail=router.responses[404]["description"]
