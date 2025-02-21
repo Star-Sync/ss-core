@@ -32,6 +32,8 @@ fastapi-cli[standard]==0.0.5
     # via
     #   fastapi
     #   fastapi-cli
+greenlet==3.1.1
+    # via sqlalchemy
 h11==0.14.0
     # via
     #   httpcore
@@ -109,6 +111,7 @@ typing-extensions==4.12.2
     #   pydantic
     #   pydantic-core
     #   rich
+    #   sqlalchemy
     #   typer
     #   uvicorn
 uvicorn[standard]==0.32.0
