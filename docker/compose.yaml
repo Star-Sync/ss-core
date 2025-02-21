@@ -13,24 +13,12 @@ services:
             - ../app:/opt/app
             - ../requirements.txt:/opt/app/requirements.txt
 
-    # eventually, we will need to load the environment vars from a file
-    # db:
-    #     image: postgres:latest
-    #     environment:
-    #         POSTGRES_USER: user
-    #         POSTGRES_PASSWORD: password
-    #         POSTGRES_DB: mydatabase
-    #     ports:
-    #         - "5432:5432"
-    #     networks:
-    #         - star-sync
-    #     volumes:
-    #         - db-data:/var/lib/postgresql/data
-
 networks:
-  star-sync:
-    name: star-sync_star-sync
-    external: true
+    # assuming ss-deploy's db is running
+    star-sync:
+        driver: bridge
+        name: star-sync_star-sync
+        external: true
 
 volumes:
     db-data:

@@ -1,3 +1,6 @@
+#  type: ignore
+# ^ remove the type: ignore from the class definition when
+#  we have the correct basic types
 from copy import deepcopy
 import asyncio
 import time
@@ -33,9 +36,9 @@ tle2 = """NEOSSAT
 s1 = Satellite(tle1, 150, 150, 150, "exCone", 4)
 s2 = Satellite(tle2, 150, 150, 150, "exCone", 4)
 
-g1 = GroundStation("Inuvik Northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 150)
-g2 = GroundStation("Prince Albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150)
-g3 = GroundStation("Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
+g1 = GroundStation(1, "Inuvik Northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 150)
+g2 = GroundStation(2, "Prince Albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150)
+g3 = GroundStation(3, "Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
 
 static_satellites: dict[str, Satellite] = {"1": s1, "2": s2}
 static_ground_stations: List[GroundStation] = [g1, g2, g3]

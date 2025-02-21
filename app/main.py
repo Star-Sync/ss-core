@@ -1,11 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pygelf import GelfTcpHandler, GelfUdpHandler, GelfTlsHandler, GelfHttpHandler, GelfHttpsHandler
-import logging
-import http.client
-import json
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import JSONResponse
 
-from .routers import gs, hello, request
+from .routers import gs, hello, request, ground_station
 
 app = FastAPI()
 
@@ -19,34 +17,10 @@ app.add_middleware(
 
 app.include_router(gs.router, prefix="/api/v1")
 app.include_router(hello.router, prefix="/api/v1")
-app.include_router(request.router, prefix="/api/v1")
+app.include_router(request.router, prefix="/api/v1")  # type: ignore
+app.include_router(ground_station.router, prefix="/api/v1")
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
-logger.addHandler(GelfUdpHandler(host='localhost', port=12201))
-
-def test():
-    conn = http.client.HTTPConnection("localhost", 12201)
-    headers = {
-        'Content-Type': 'application/json',
-    }
-    data = {
-        "version": "1.1",
-        "host": "example.org",
-        "short_message": "A short message",
-        "level": 5,
-        "_some_info": "foo"
-    }
-
-    json_data = json.dumps(data)
-    conn.request("POST", "/gelf", body=json_data, headers=headers)
-    response = conn.getresponse()
-
-    print(response.status)
-    print(response.read().decode())
-
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    test()
-    return {"message": "Hello FastAPI!"}
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="Star Sync API")
