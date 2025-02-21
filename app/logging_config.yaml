@@ -1,12 +1,17 @@
-# logging_config.yaml
 version: 1
 disable_existing_loggers: False
+formatters:
+  simple:
+    format: '%(levelname)s: %(message)s'
 handlers:
   graylog:
-    class: pygelf.GelfUdpHandler
-    host: localhost
+    class: pygelf.GelfTcpHandler
+    host: graylog
     port: 12201
-    _app_name: star-sync-core
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stdout
 root:
-  handlers: [graylog]
+  handlers: [graylog, console]
   level: INFO
