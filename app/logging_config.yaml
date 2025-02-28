@@ -1,0 +1,17 @@
+version: 1
+disable_existing_loggers: False
+formatters:
+  simple:
+    format: '%(levelname)s: %(message)s'
+handlers:
+  graylog:
+    class: pygelf.GelfTcpHandler
+    host: graylog
+    port: 12201
+  console:
+    class: logging.StreamHandler
+    formatter: simple
+    stream: ext://sys.stdout
+root:
+  handlers: [graylog, console]
+  level: INFO

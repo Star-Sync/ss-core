@@ -5,3 +5,4 @@ skyfield
 python-dotenv
 sqlmodel
 psycopg2-binary
+pygelf
