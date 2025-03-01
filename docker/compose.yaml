@@ -1,7 +1,7 @@
-name: ss-server
+name: star-sync
 
 services:
-    server:
+    ss-core:
         build:
             context: ../
             dockerfile: docker/Dockerfile
