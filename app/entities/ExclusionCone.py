@@ -17,6 +17,7 @@ class ExclusionCone(SQLModel, table=True):
     gs_id: int = Field(foreign_key="ground_stations.id")
     satellite: "Satellite" = Relationship(back_populates="ex_cones")
 
+    # Will most likely be removed soon
     def __init__(
         self,
         id: uuid.UUID = uuid.uuid4(),
