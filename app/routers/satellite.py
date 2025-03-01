@@ -1,20 +1,19 @@
 import uuid
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
 from typing import List
-from app.models.satellite import SatelliteModel, SatelliteCreateModel
+from app.models.satellite import (
+    SatelliteModel,
+    SatelliteCreateModel,
+    SatelliteUpdateModel,
+)
 from sqlmodel import Session
 from app.services.db import get_db
 from app.services.satellite import SatelliteService
 
-router = APIRouter(
-    prefix="/satellite",
-    tags=["Satellite"],
-    responses={404: {"description": "Satellite not found"}},
-)
+router = APIRouter(prefix="/satellites", tags=["Satellite"])
 
 
-# POST /api/v1/satellite
+# POST /api/v1/satellites
 @router.post(
     "/",
     summary="Create a new Satellite",
@@ -22,53 +21,46 @@ router = APIRouter(
     response_description="Satellite created response",
 )
 def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db)):
-    new_satellite = SatelliteService.create_satellite(db, request)
-    return SatelliteModel(**new_satellite.model_dump())
+    return SatelliteService.create_satellite(db, request)
 
 
-# PUT /api/v1/satellite/
-@router.put(
-    "/",
+# PATCH /api/v1/satellites/{satellite_id}
+@router.patch(
+    "/{satellite_id}",
     summary="Update a Satellite",
     response_model=SatelliteModel,
     response_description="Satellite updated response",
 )
-def update_satellite(request: SatelliteModel, db: Session = Depends(get_db)):
-    satellite = SatelliteService.update_satellite(db, request)
-    return SatelliteModel(**satellite.model_dump())
+def update_satellite(
+    satellite_id: uuid.UUID,
+    request: SatelliteUpdateModel,
+    db: Session = Depends(get_db),
+):
+    return SatelliteService.update_satellite(db, satellite_id, request)
 
 
-# GET /api/v1/satellite
+# GET /api/v1/satellites
 @router.get(
-    "/",
-    summary="Get a list of all satellites",
-    response_model=List[SatelliteModel],
+    "/", summary="Get a list of all satellites", response_model=List[SatelliteModel]
 )
 def get_satellites(db: Session = Depends(get_db)):
-    satellites = SatelliteService.get_satellites(db)
-    return [SatelliteModel(**satellite.model_dump()) for satellite in satellites]
+    return SatelliteService.get_satellites(db)
 
 
-# GET /api/v1/satellite/{satellite_id}
+# GET /api/v1/satellites/{satellite_id}
 @router.get(
-    "/{satellite_id}",
-    summary="Get a satellite by id",
-    response_model=SatelliteModel,
+    "/{satellite_id}", summary="Get a satellite by id", response_model=SatelliteModel
 )
 def get_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
-    satellite = SatelliteService.get_satellite(db, satellite_id)
-    if satellite is None:
-        raise HTTPException(
-            status_code=404, detail=router.responses[404]["description"]
-        )
-    return SatelliteModel(**satellite.model_dump())
+    return SatelliteService.get_satellite(db, satellite_id)
 
 
-# DELETE /api/v1/satellite/{satellite_id}
-@router.delete("/{satellite_id}", summary="Delete a Satellite")
+# DELETE /api/v1/satellites/{satellite_id}
+@router.delete(
+    "/{satellite_id}",
+    summary="Delete a Satellite",
+    response_model=SatelliteModel,
+    response_description="Deleted satellite object",
+)
 def delete_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
-    if not SatelliteService.delete_satellite(db, satellite_id):
-        raise HTTPException(
-            status_code=404, detail=router.responses[404]["description"]
-        )
-    return {"detail": "Satellite deleted successfully"}
+    return SatelliteService.delete_satellite(db, satellite_id)
