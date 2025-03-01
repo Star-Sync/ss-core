@@ -1,33 +1,42 @@
-from skyfield.sgp4lib import EarthSatellite
-from sqlmodel import Relationship, SQLModel, Field
+import uuid
+from skyfield.sgp4lib import EarthSatellite  # type: ignore
+from sqlmodel import Relationship, SQLModel, Field  # type: ignore
+from sqlalchemy.orm import Mapped
+from typing import List
+from app.entities.ExclusionCone import ExclusionCone
 
 
-class Satellite(SQLModel, table=True):  # type: ignore
-    # TODO: excone should be an object
-    id: int = Field(default=None, primary_key=True)
+class Satellite(SQLModel, table=True):
+    __tablename__: str = "satellites"  # type: ignore
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str
     tle: str
     uplink: float
-    downlink: float
+    telemetry: float
     science: float
-    exCone: str
     priority: int
+    ex_cones: Mapped[List["ExclusionCone"]] = Relationship(back_populates="satellite")
 
+    # this init will most likely be removed soon
     def __init__(
         self,
-        tle: str,
-        uplink: float,
-        downlink: float,
-        science: float,
-        exCone: str,
-        priority: int,
+        id: uuid.UUID = uuid.uuid4(),
+        name: str = "",
+        tle: str = "",
+        uplink: float = 0,
+        telemetry: float = 0,
+        science: float = 0,
+        priority: int = 0,
+        # ex_cone: Optional[List[ExclusionCone]] = None,
     ):
-        self.name = tle.splitlines()[0]
+        self.id = id
+        self.name = name
         self.tle = tle
         self.uplink = uplink
-        self.downlink = downlink
+        self.telemetry = telemetry
         self.science = science
-        self.exCone = exCone
+        # self.ex_cone = ex_cone
         self.priority = priority
 
     def get_sf_sat(self) -> EarthSatellite:
