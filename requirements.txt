@@ -122,6 +122,16 @@ starlette==0.41.2
     # via fastapi
 typer==0.13.0
     # via fastapi-cli
+types-cryptography==3.3.23.2
+    # via types-pyjwt
+types-passlib==1.7.7.20241221
+    # via -r requirements.in
+types-pyasn1==0.6.0.20250208
+    # via types-python-jose
+types-pyjwt==1.7.1
+    # via -r requirements.in
+types-python-jose==3.4.0.20250224
+    # via -r requirements.in
 typing-extensions==4.12.2
     # via
     #   anyio

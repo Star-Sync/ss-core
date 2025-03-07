@@ -13,12 +13,13 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
     responses={404: {"description": "Not found"}},
-    )
+)
+
 
 @router.post("/token", response_model=jwt.Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     user = jwt.authenticate_user(db, form_data.username, form_data.password)
     if not user:
@@ -33,42 +34,44 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @router.post("/register", response_model=UserRead)
 async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
-    
-    try: 
+
+    try:
         # Check if username already exists
         stmt = select(User).where(User.username == user_data.username)
         existing_user = db.exec(stmt).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="Username already registered")
-        
+
         # Check if email already exists
         stmt = select(User).where(User.email == user_data.email)
         existing_email = db.exec(stmt).first()
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already registered")
-        
+
         # Create new user
         hashed_password = jwt.get_password_hash(user_data.password)
         new_user = User(
             username=user_data.username,
             email=user_data.email,
-            hashed_password=hashed_password
+            hashed_password=hashed_password,
         )
-        
+
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-    
+
     except Exception as e:
-         # Log the specific error
+        # Log the specific error
         print(f"Registration error: {str(e)}")
         # Rollback the transaction
         db.rollback()
         # Re-raise as HTTP exception
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
     return new_user
+
 
 @router.get("/users/me", response_model=UserRead)
 async def read_users_me(current_user: User = Depends(jwt.get_current_active_user)):
