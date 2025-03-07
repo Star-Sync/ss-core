@@ -5,8 +5,8 @@ from fastapi.responses import JSONResponse  # type: ignore
 from pygelf import GelfTcpHandler
 from .routers import gs, hello, request, ground_station, auth, satellite, exclusion_cone
 import logging
-logger = logging.getLogger()
 
+logger = logging.getLogger()
 
 
 app = FastAPI()
@@ -26,6 +26,7 @@ app.include_router(ground_station.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(satellite.router, prefix="/api/v1")
 app.include_router(exclusion_cone.router, prefix="/api/v1")
+
 
 @app.get("/", include_in_schema=False)
 async def root():

@@ -37,9 +37,7 @@ exceptiongroup==1.2.2
 fastapi[standard]==0.115.4
     # via -r requirements.in
 fastapi-cli[standard]==0.0.5
-    # via
-    #   fastapi
-    #   fastapi-cli
+    # via fastapi
 greenlet==3.1.1
     # via sqlalchemy
 h11==0.14.0
