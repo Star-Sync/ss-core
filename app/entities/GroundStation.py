@@ -7,6 +7,8 @@ from typing import Optional
 
 
 class GroundStation(SQLModel, table=True):  # type: ignore
+    __tablename__: str = "ground_stations"  # type: ignore
+
     """
     TODO:
     - there should be 2 values of mask parameter: Receive and Send; for now it's the same
@@ -22,6 +24,7 @@ class GroundStation(SQLModel, table=True):  # type: ignore
     downlink: float
     science: float
 
+    # Will most likely be removed soon
     def __init__(
         self,
         id: Optional[int] = None,

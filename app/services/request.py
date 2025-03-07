@@ -20,9 +20,12 @@ from ..models.request import (
     ContactRequestModel,
 )
 from skyfield.api import utc
-
+from app.services.db import get_db
+from fastapi import Depends
+from sqlmodel import Session
 
 ############################### Set up of static values and objects ###############################
+db: Session = Depends(get_db)
 
 time_format = "%Y-%m-%dT%H:%M:%S"
 
@@ -33,12 +36,48 @@ tle2 = """NEOSSAT
 1 39089U 13009D   24298.50343230  .00000620  00000+0  23091-3 0  9992
 2 39089  98.4036 122.5021 0010164 233.8050 126.2197 14.35350046610553"""
 
-s1 = Satellite(tle1, 150, 150, 150, "exCone", 4)
-s2 = Satellite(tle2, 150, 150, 150, "exCone", 4)
+s1 = Satellite(
+    name="SCISAT 1", tle=tle1, uplink=150, telemetry=150, science=150, priority=4
+)
+s2 = Satellite(
+    name="NEOSSAT", tle=tle2, uplink=150, telemetry=150, science=150, priority=4
+)
 
-g1 = GroundStation(1, "Inuvik Northwest", 68.3195, -133.549, 102.5, 0, 150, 150, 150)
-g2 = GroundStation(2, "Prince Albert", 53.2124, -105.934, 490.3, 0, 150, 150, 150)
-g3 = GroundStation(3, "Gatineau Quebec", 45.5846, -75.8083, 240.1, 0, 150, 150, 150)
+g1 = GroundStation(
+    name="Inuvik Northwest",
+    lat=68.3195,
+    lon=-133.549,
+    height=102.5,
+    mask=5,
+    uplink=150,
+    downlink=150,
+    science=150,
+)
+g2 = GroundStation(
+    name="Prince Albert",
+    lat=53.2124,
+    lon=-105.934,
+    height=490.3,
+    mask=5,
+    uplink=150,
+    downlink=150,
+    science=150,
+)
+g3 = GroundStation(
+    name="Gatineau Quebec",
+    lat=45.5846,
+    lon=-75.8083,
+    height=240.1,
+    mask=5,
+    uplink=150,
+    downlink=150,
+    science=150,
+)
+
+# db.add([g1, g2, g3])
+# db.commit()
+# db.add_all([s1, s2])
+# db.commit()
 
 static_satellites: dict[str, Satellite] = {"1": s1, "2": s2}
 static_ground_stations: List[GroundStation] = [g1, g2, g3]
