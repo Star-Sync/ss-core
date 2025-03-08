@@ -6,14 +6,21 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
+from dotenv import load_dotenv
+import os
 
 from pydantic import BaseModel
-from .models import User
+from ..models.auth import User, UserCreate
 from app.services.db import get_db
+
+load_dotenv()
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7",
+)
 
 # Secret key should be loaded from environment variables in production.
 # Use this for development only—change this to a secure random key!
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -38,10 +45,18 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def get_user(db: Session, username: str) -> Optional[User]:
+def get_user_by_username(db: Session, username: str) -> Optional[User]:
     statement = select(User).where(User.username == username)
-    result = db.exec(statement).first()
-    return result
+    return db.exec(statement).first()
+
+
+def get_user_by_email(db: Session, email: str) -> Optional[User]:
+    statement = select(User).where(User.email == email)
+    return db.exec(statement).first()
+
+
+def get_user(db: Session, username: str) -> Optional[User]:
+    return get_user_by_username(db, username)
 
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
@@ -94,3 +109,30 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def register_user(db: Session, user_data: UserCreate) -> User:
+    """Register a new user after validating username and email are unique"""
+    # Check if username already exists
+    existing_user = get_user_by_username(db, user_data.username)
+    if existing_user:
+        raise ValueError("Username already registered")
+
+    # Check if email already exists
+    existing_email = get_user_by_email(db, user_data.email)
+    if existing_email:
+        raise ValueError("Email already registered")
+
+    # Create new user
+    hashed_password = get_password_hash(user_data.password)
+    new_user = User(
+        username=user_data.username,
+        email=user_data.email,
+        hashed_password=hashed_password,
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
