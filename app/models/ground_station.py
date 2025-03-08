@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -28,28 +29,53 @@ class GroundStationCreateModel(BaseModel):
     science: float = Field(description="Science data rate in Mbps", examples=[100.0])
 
 
-class GroundStationModel(BaseModel):
+class GroundStationModel(GroundStationCreateModel):
     """
     This is a Pydantic model class that represents the ground station.
     """
 
     id: int = Field(description="ID of the ground station", examples=[1])
-    name: str = Field(
+
+    class Config:
+        from_attributes = True
+
+
+class GroundStationUpdateModel(BaseModel):
+    """
+    This is a Pydantic model class that represents the ground station;
+    Only used for creation of new resources.
+    """
+
+    name: Optional[str] = Field(
+        default=None,
         description="Name of the ground station",
         examples=["Inuvik Northwest Territories"],
     )
-    lat: float = Field(description="Latitude of the ground station", examples=[68.3195])
-    lon: float = Field(
-        description="Longitude of the ground station", examples=[-133.549]
+    lat: Optional[float] = Field(
+        default=None, description="Latitude of the ground station", examples=[68.3195]
     )
-    height: float = Field(
+    lon: Optional[float] = Field(
+        default=None, description="Longitude of the ground station", examples=[-133.549]
+    )
+    height: Optional[float] = Field(
+        default=None,
         description="Height of the ground station above sea level in meters",
         examples=[102.5],
     )
-    mask: int = Field(
-        description="Mask angle of the ground station in degrees. (Note: for now the value is the same for Receive and Send)",
+    mask: Optional[int] = Field(
+        default=None,
+        description="Mask angle of the ground station in degrees",
         examples=[5],
     )
-    uplink: float = Field(description="Uplink data rate in Kbps", examples=[40.0])
-    downlink: float = Field(description="Downlink data rate in Mbps", examples=[100.0])
-    science: float = Field(description="Science data rate in Mbps", examples=[100.0])
+    uplink: Optional[float] = Field(
+        default=None, description="Uplink data rate in Kbps", examples=[40.0]
+    )
+    downlink: Optional[float] = Field(
+        default=None, description="Downlink data rate in Mbps", examples=[100.0]
+    )
+    science: Optional[float] = Field(
+        default=None, description="Science data rate in Mbps", examples=[100.0]
+    )
+
+    class Config:
+        from_attributes = True

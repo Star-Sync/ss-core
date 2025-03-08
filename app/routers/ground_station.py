@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
 from typing import List
-from app.models.ground_station import GroundStationModel
+from app.models.ground_station import GroundStationModel, GroundStationUpdateModel
 from sqlmodel import Session
 from app.services.ground_station import GroundStationService, GroundStationCreateModel
 from app.services.db import get_db
@@ -27,16 +26,17 @@ def create_ground_station(
     return GroundStationModel(**new_gs.model_dump())
 
 
-# PUT /api/v1/gs/
-@router.put(
-    "/",
+# PATCH /api/v1/gs/
+@router.patch(
+    "/{gs_id}",
     summary="Update a ground station",
     response_model=GroundStationModel,
     response_description="Ground station updated response",
 )
-def update_ground_station(request: GroundStationModel, db: Session = Depends(get_db)):
-    gs = GroundStationService.update_ground_station(db, request)
-    return GroundStationModel(**gs.model_dump())
+def update_ground_station(
+    gs_id: int, request: GroundStationUpdateModel, db: Session = Depends(get_db)
+):
+    return GroundStationService.update_ground_station(db, gs_id, request)
 
 
 # GET /api/v1/gs
