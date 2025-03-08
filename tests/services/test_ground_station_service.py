@@ -1,6 +1,13 @@
 import pytest
+from app.entities.Satellite import Satellite
+from app.entities.ExclusionCone import ExclusionCone
+from app.entities.GroundStation import GroundStation
 from app.services.ground_station import GroundStationService
-from app.models.ground_station import GroundStationModel, GroundStationCreateModel
+from app.models.ground_station import (
+    GroundStationModel,
+    GroundStationCreateModel,
+    GroundStationUpdateModel,
+)
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
@@ -23,7 +30,10 @@ def session_fixture():
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
-    SQLModel.metadata.create_all(engine)
+    SQLModel.metadata.create_all(
+        engine,
+        tables=[Satellite.__table__, ExclusionCone.__table__, GroundStation.__table__],  # type: ignore
+    )
     with Session(engine) as session:
         yield session
 
@@ -43,19 +53,24 @@ def test_create_ground_station(db_session: Session):
 
 
 def test_update_ground_station(db_session: Session):
-    updated_gs_model = _gs_model.model_copy()
+    GroundStationService.create_ground_station(db_session, _gs_create_model)
+
+    gs_id = _gs_model.id
+    updated_gs_model = GroundStationUpdateModel(**_gs_model.model_dump())
     updated_gs_model.name = "Updated Station"
     updated_gs_model.uplink = 100
 
-    result = GroundStationService.update_ground_station(db_session, updated_gs_model)
+    result = GroundStationService.update_ground_station(
+        db_session, gs_id, updated_gs_model
+    )
 
     assert result.id == 1
-    assert result.name == "Updated Station"
+    assert result.name == "Updated Station"  # Updated value
     assert result.lat == 68.3
     assert result.lon == 133.5
     assert result.height == 100.0
     assert result.mask == 5
-    assert result.uplink == 100
+    assert result.uplink == 100  # Updated value
     assert result.downlink == 100
     assert result.science == 100
 
@@ -63,22 +78,13 @@ def test_update_ground_station(db_session: Session):
 def test_update_ground_station_not_found(db_session: Session):
     GroundStationService.create_ground_station(db_session, _gs_create_model)
 
-    updated_gs_model = _gs_model.model_copy()
-    updated_gs_model.id = 2
-    updated_gs_model.name = "New Station - Did not exist before"
-    updated_gs_model.lat = 70.0
+    gs_id = 2  # ID that does not exist
+    updated_gs_model = GroundStationUpdateModel(**_gs_model.model_dump())
+    updated_gs_model.name = "Updated Station"
 
-    result = GroundStationService.update_ground_station(db_session, updated_gs_model)
-
-    assert result.id == 2
-    assert result.name == "New Station - Did not exist before"
-    assert result.lat == 70.0
-    assert result.lon == 133.5
-    assert result.height == 100.0
-    assert result.mask == 5
-    assert result.uplink == 50
-    assert result.downlink == 100
-    assert result.science == 100
+    with pytest.raises(Exception) as e:
+        GroundStationService.update_ground_station(db_session, gs_id, updated_gs_model)
+    assert "Ground Station with ID 2 not found" in str(e.value)
 
 
 def test_get_ground_stations(db_session: Session):
