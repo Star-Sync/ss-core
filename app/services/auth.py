@@ -8,16 +8,16 @@ from passlib.context import CryptContext
 from sqlmodel import Session, select
 from dotenv import load_dotenv
 import os
-
+import secrets 
 from pydantic import BaseModel
 from ..models.auth import User, UserCreate
 from app.services.db import get_db
 
+# Generate random secret key
+DEFAULT_SECRET_KEY = secrets.token_urlsafe(32)
+
 load_dotenv()
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7",
-)
+SECRET_KEY = os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
 
 # Secret key should be loaded from environment variables in production.
 # Use this for development only—change this to a secure random key!
