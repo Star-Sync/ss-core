@@ -1,5 +1,4 @@
 from fastapi import HTTPException
-from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import select, Session
 from app.entities.ExclusionCone import ExclusionCone
@@ -14,6 +13,8 @@ from app.entities.GroundStation import GroundStation
 class GroundStationService:
     @staticmethod
     def create_ground_station(db: Session, ground_station: GroundStationCreateModel):
+        # TODO: Before we service the request in the future we must first validate that request is legitimate (token validation)
+        # TODO: Check user permissions to allow satellite creation
         gs = GroundStation(**ground_station.model_dump())
         db.add(gs)
         db.commit()
@@ -43,11 +44,6 @@ class GroundStationService:
             return GroundStationModel.model_validate(existing_gs)
         except HTTPException as http_e:
             raise http_e
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate ground station data for ID {gs_id}: {str(ve)}",
-            )
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(
