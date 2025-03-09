@@ -3,11 +3,13 @@
 #  we have the correct basic types
 
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
+from app.services.db import get_db
+from sqlmodel import Session
 
-from ..models.request import (
+from app.models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
     ContactRequestModel,
@@ -20,12 +22,20 @@ from ..models.request import (
 #     map_to_response_model,
 # )
 
+from ..services.request import RequestService
 
 router = APIRouter(
     prefix="/request",
     tags=["Request"],
     responses={404: {"description": "Not found"}},
 )
+
+
+@router.get("/sample", summary="runs a sample demo of the service")
+def sample(
+    db: Session = Depends(get_db),
+):
+    return RequestService.sample(db)
 
 
 # @router.get(
