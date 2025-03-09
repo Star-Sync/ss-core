@@ -10,8 +10,6 @@ DATABASE_URL = os.getenv(
 )
 
 engine = create_engine(DATABASE_URL)
-logger = logging.getLogger("sqlalchemy.engine")
-logger.setLevel(logging.DEBUG)
 
 
 def get_db():

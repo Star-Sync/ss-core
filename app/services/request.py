@@ -6,10 +6,13 @@ import random
 import numpy as np
 from skyfield.api import EarthSatellite, load, Timescale, Time
 from skyfield.toposlib import GeographicPosition
+from sqlmodel import select, Session
+from app.services.ground_station import GroundStationService
+from app.services.satellite import SatelliteService
 from ..entities.Satellite import Satellite
 from ..entities.GroundStation import GroundStation
 from ..entities.Request import RFRequest, ContactRequest
-
+import uuid
 
 random.seed(42)
 
@@ -23,9 +26,9 @@ class Slot:
 @dataclass
 class Contact:
     mission: str
-    satellite: Satellite | None
+    satellite_id: uuid.UUID | None
     slot: Slot
-    GroundStation: GroundStation | None
+    ground_station_id: int | None
     orbit: int
     uplink: bool
     telemetry: bool
@@ -104,16 +107,18 @@ def schedule_with_slots(
                 start_time = start
                 end_time = start_time + slot_duration
 
-                station_name = request.ground_station.name
+                station_id = str(request.ground_station_id)
 
-                if (start, start + slot_duration) in slots[station_name]:
+                if (start, start + slot_duration) in slots[station_id]:
                     continue
 
                 contact = Contact(
                     mission=request.mission,
-                    satellite=request.satellite,
+                    satellite_id=request.satellite_id if request.satellite_id else None,
                     slot=Slot(start_time=start_time, end_time=end_time),
-                    GroundStation=request.ground_station,
+                    ground_station_id=(
+                        request.ground_station_id if request.ground_station_id else None
+                    ),
                     orbit=request.orbit,
                     uplink=request.uplink,
                     telemetry=request.telemetry,
@@ -123,7 +128,7 @@ def schedule_with_slots(
                     rf_off=request.rf_off,
                 )
 
-                slots[station_name][(start, start + slot_duration)] = contact
+                slots[station_id][(start, start + slot_duration)] = contact
                 contacts.append(contact)
                 # converting from float to int could cause issues in the future
                 remaining_time -= int(slot_duration.total_seconds())
@@ -131,7 +136,7 @@ def schedule_with_slots(
 
             if not request.scheduled:
                 print(
-                    f"Could not schedule request: {request.mission} - {request.satellite} - {request.ground_station.name}"
+                    f"Could not schedule request: {request.mission} - {request.satellite_id} - {request.ground_station_id}"
                 )
 
     # Schedule RFRequests next
@@ -152,18 +157,24 @@ def schedule_with_slots(
                 slot_duration = end - start
                 start_time = start
                 end_time = end
-                for GroundStation in stations:
-                    station_name = GroundStation.name
+                for gs in stations:
+                    station_name = gs.name
                     if (start, end) not in slots[station_name]:
-                        request.GroundStation = GroundStation
+                        request.ground_station_id = gs.id
                         contact = Contact(
                             mission=request.mission,
-                            satellite=request.satellite,
+                            satellite_id=(
+                                request.satellite_id if request.satellite_id else None
+                            ),
                             slot=Slot(
                                 start_time=start_time,
                                 end_time=end_time,
                             ),
-                            GroundStation=request.ground_station,
+                            ground_station_id=(
+                                request.ground_station_id
+                                if request.ground_station_id
+                                else None
+                            ),
                             orbit=0,
                             uplink=request.uplink_time_requested > 0,
                             telemetry=request.downlink_time_requested > 0,
@@ -183,7 +194,7 @@ def schedule_with_slots(
                     break
             if not request.scheduled:
                 print(
-                    f"Could not schedule request: {request.mission} - {request.satellite}"
+                    f"Could not schedule request: {request.mission} - {request.satellite_id}"
                 )
     pprint(requests)
     return contacts
@@ -321,3 +332,83 @@ def is_visible(
 #                 request.GroundStation = GroundStation
 #                 return True
 #     return False
+
+
+class RequestService:
+    # @staticmethod
+    # def schedule_requests(
+    #     requests: list[Request], stations: list[GroundStation]
+    # ) -> list[Contact]:
+    #     return schedule_with_slots(requests, stations)
+
+    @staticmethod
+    def sample(
+        db: Session,
+    ) -> list[Contact]:
+        sats = SatelliteService.get_satellites(db)
+        stations = GroundStationService.get_ground_stations(db)
+        requests: list[Request] = [
+            RFRequest(
+                mission="Mission 1",
+                satellite_id=sats[0].id,
+                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                uplink_time_requested=30,
+                downlink_time_requested=30,
+                science_time_requested=30,
+                min_passes=1,
+                priority=1,
+                contact_id=uuid.uuid4(),
+            ),
+            RFRequest(
+                mission="Mission 2",
+                satellite_id=sats[1].id,
+                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                uplink_time_requested=30,
+                downlink_time_requested=30,
+                science_time_requested=30,
+                min_passes=1,
+                priority=1,
+                contact_id=uuid.uuid4(),
+            ),
+            ContactRequest(
+                mission="Mission 4",
+                satellite_id=sats[0].id,
+                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                ground_station_id=stations[0].id,
+                orbit=1,
+                uplink=True,
+                telemetry=True,
+                science=True,
+                aos=0,
+                los=0,
+                rf_on=0,
+                rf_off=0,
+                duration=30,
+                priority=1,
+                contact_id=uuid.uuid4(),
+            ),
+            ContactRequest(
+                mission="Mission 5",
+                satellite_id=sats[1].id,
+                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                ground_station_id=stations[1].id,
+                orbit=1,
+                uplink=True,
+                telemetry=True,
+                science=True,
+                aos=0,
+                los=0,
+                rf_on=0,
+                rf_off=0,
+                duration=30,
+                priority=1,
+                contact_id=uuid.uuid4(),
+            ),
+        ]
+        return schedule_with_slots(requests, list(stations))
+
+    pass
