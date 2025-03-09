@@ -1,7 +1,5 @@
-from skyfield.api import wgs84
-from skyfield.toposlib import GeographicPosition
-from skyfield.api import wgs84
-from skyfield.toposlib import GeographicPosition
+from skyfield.api import wgs84  # type: ignore
+from skyfield.toposlib import GeographicPosition  # type: ignore
 from sqlmodel import SQLModel, Field
 from typing import Optional
 

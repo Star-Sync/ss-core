@@ -1,3 +1,4 @@
+# type: ignore
 from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
@@ -37,7 +38,7 @@ def reset_mocks(mock_db: MagicMock):
 
 _ver_prefix = "/api/v1"
 
-_gs_data: dict[str, float | int | str] = {
+_gs_data = {
     "id": 1,
     "name": "Test Station",
     "lat": 68.3,
