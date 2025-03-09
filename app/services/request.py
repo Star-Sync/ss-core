@@ -23,7 +23,7 @@ class Slot:
 @dataclass
 class Contact:
     mission: str
-    satellite: Satellite
+    satellite: Satellite | None
     slot: Slot
     GroundStation: GroundStation | None
     orbit: int
@@ -104,7 +104,7 @@ def schedule_with_slots(
                 start_time = start
                 end_time = start_time + slot_duration
 
-                station_name = request.GroundStation.name
+                station_name = request.ground_station.name
 
                 if (start, start + slot_duration) in slots[station_name]:
                     continue
@@ -113,7 +113,7 @@ def schedule_with_slots(
                     mission=request.mission,
                     satellite=request.satellite,
                     slot=Slot(start_time=start_time, end_time=end_time),
-                    GroundStation=request.GroundStation,
+                    GroundStation=request.ground_station,
                     orbit=request.orbit,
                     uplink=request.uplink,
                     telemetry=request.telemetry,
@@ -131,7 +131,7 @@ def schedule_with_slots(
 
             if not request.scheduled:
                 print(
-                    f"Could not schedule request: {request.mission} - {request.satellite} - {request.GroundStation.name}"
+                    f"Could not schedule request: {request.mission} - {request.satellite} - {request.ground_station.name}"
                 )
 
     # Schedule RFRequests next
@@ -163,7 +163,7 @@ def schedule_with_slots(
                                 start_time=start_time,
                                 end_time=end_time,
                             ),
-                            GroundStation=request.GroundStation,
+                            GroundStation=request.ground_station,
                             orbit=0,
                             uplink=request.uplink_time_requested > 0,
                             telemetry=request.downlink_time_requested > 0,
