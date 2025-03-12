@@ -31,11 +31,23 @@ router = APIRouter(
 )
 
 
-@router.get("/sample", summary="runs a sample demo of the service")
+@router.get(
+    "/",
+    summary="runs a sample demo of the service",
+    response_model=List[GeneralContactResponseModel],
+)
 def sample(
     db: Session = Depends(get_db),
 ):
-    return RequestService.sample(db)
+    try:
+        # return RequestService.sample(db)
+        future_reqs = RequestService.transform_contact_to_general(
+            RequestService.sample(db)
+        )
+
+        return future_reqs
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # @router.get(
@@ -46,9 +58,7 @@ def sample(
 # )
 # def bookings():
 #     try:
-#         future_reqs = [
-#             map_to_response_model(booking) for booking in get_db_contact_times()
-#         ]
+#         future_reqs = [map_to_response_model(booking) for c in get_db_contact_times()]
 #         return future_reqs
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
