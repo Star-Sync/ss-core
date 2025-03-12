@@ -7,6 +7,7 @@ import numpy as np
 from skyfield.api import EarthSatellite, load, Timescale, Time
 from skyfield.toposlib import GeographicPosition
 from sqlmodel import select, Session
+from app.models.request import GeneralContactResponseModel
 from app.services.ground_station import GroundStationService
 from app.services.satellite import SatelliteService
 from ..entities.Satellite import Satellite
@@ -33,9 +34,9 @@ class Contact:
     uplink: bool
     telemetry: bool
     science: bool
-    aos: int
-    rf_on: int
-    rf_off: int
+    aos: datetime.datetime
+    rf_on: datetime.datetime
+    rf_off: datetime.datetime
 
 
 Request = RFRequest | ContactRequest
@@ -351,8 +352,8 @@ class RequestService:
             RFRequest(
                 mission="Mission 1",
                 satellite_id=sats[0].id,
-                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
-                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                start_time=datetime.datetime(2025, 3, 1, 0, 0, 0),
+                end_time=datetime.datetime(2025, 3, 1, 1, 0, 0),
                 uplink_time_requested=30,
                 downlink_time_requested=30,
                 science_time_requested=30,
@@ -363,8 +364,8 @@ class RequestService:
             RFRequest(
                 mission="Mission 2",
                 satellite_id=sats[1].id,
-                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
-                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                start_time=datetime.datetime(2025, 3, 1, 0, 0, 0),
+                end_time=datetime.datetime(2025, 3, 1, 1, 0, 0),
                 uplink_time_requested=30,
                 downlink_time_requested=30,
                 science_time_requested=30,
@@ -375,8 +376,8 @@ class RequestService:
             ContactRequest(
                 mission="Mission 4",
                 satellite_id=sats[0].id,
-                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
-                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                start_time=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 ground_station_id=stations[0].id,
                 orbit=1,
                 uplink=True,
@@ -393,8 +394,8 @@ class RequestService:
             ContactRequest(
                 mission="Mission 5",
                 satellite_id=sats[1].id,
-                start_time=datetime.datetime(2022, 1, 1, 0, 0, 0),
-                end_time=datetime.datetime(2022, 1, 1, 1, 0, 0),
+                start_time=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                end_time=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 ground_station_id=stations[1].id,
                 orbit=1,
                 uplink=True,
@@ -409,6 +410,33 @@ class RequestService:
                 contact_id=uuid.uuid4(),
             ),
         ]
-        return schedule_with_slots(requests, list(stations))
+        contacts = schedule_with_slots(requests, list(stations))
+        return contacts
 
-    pass
+    @staticmethod
+    def transform_contact_to_general(
+        contacts: list[Contact],
+    ) -> list[GeneralContactResponseModel]:
+        resp = []
+        for contact in contacts:
+            gc = GeneralContactResponseModel(
+                requestType="RFTime",
+                mission=contact.mission,
+                satellite=str(contact.satellite_id),
+                station=str(contact.ground_station_id),
+                uplink=contact.uplink,
+                telemetry=contact.telemetry,
+                science=contact.science,
+                startTime=contact.slot.start_time,
+                endTime=contact.slot.end_time,
+                duration=(
+                    contact.slot.end_time - contact.slot.start_time
+                ).total_seconds(),
+                aos=contact.aos,
+                rf_on=contact.rf_on,
+                rf_off=contact.rf_off,
+                los=contact.rf_off,
+                orbit=str(contact.orbit),
+            )
+            resp.append(gc)
+        return resp
