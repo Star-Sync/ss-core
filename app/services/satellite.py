@@ -1,7 +1,6 @@
 import uuid
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
-from pydantic import ValidationError
 from sqlmodel import select, Session
 from sqlalchemy.orm import joinedload
 from app.models.satellite import (
@@ -14,7 +13,9 @@ from app.entities.Satellite import Satellite
 
 class SatelliteService:
     @staticmethod
-    def create_satellite(db: Session, satellite: SatelliteCreateModel):
+    def create_satellite(
+        db: Session, satellite: SatelliteCreateModel
+    ) -> SatelliteModel:
         # TODO: Before we service the request in the future we must first validate that request is legitimate (token validation)
         # TODO: Check user permissions to allow satellite creation
         try:
@@ -23,12 +24,6 @@ class SatelliteService:
             db.commit()
             db.refresh(sat)
             return SatelliteModel.model_validate(sat)
-
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate created satellite: {str(ve)}",
-            )
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(
@@ -70,11 +65,6 @@ class SatelliteService:
 
         except HTTPException as http_e:
             raise http_e
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate satellite data for ID {sat_id}: {str(ve)}",
-            )
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(
@@ -94,13 +84,8 @@ class SatelliteService:
         try:
             statement = select(Satellite).options(joinedload(Satellite.ex_cones))
             satellites = db.exec(statement).unique().all()
-            try:
-                return [SatelliteModel.model_validate(sat) for sat in satellites]
-            except ValidationError as ve:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Failed to validate satellite data: {str(ve)}",
-                )
+            return [SatelliteModel.model_validate(sat) for sat in satellites]
+
         except SQLAlchemyError:
             raise HTTPException(
                 status_code=503,
@@ -128,14 +113,8 @@ class SatelliteService:
                 raise HTTPException(
                     status_code=404, detail=f"Satellite with ID {sat_id} not found"
                 )
+            return SatelliteModel.model_validate(satellite)
 
-            try:
-                return SatelliteModel.model_validate(satellite)
-            except ValidationError as ve:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Failed to validate satellite data for ID {sat_id}: {str(ve)}",
-                )
         except HTTPException as http_e:
             raise http_e
         except SQLAlchemyError:
