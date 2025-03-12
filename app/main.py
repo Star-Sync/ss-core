@@ -8,7 +8,7 @@ import logging
 
 logger = logging.getLogger()
 
-# for debugging, elevcate the log level of the sqlalchemy engine
+# for debugging, elevate the log level of the sqlalchemy engine
 db_logger = logging.getLogger("sqlalchemy.engine")
 db_logger.setLevel(logging.DEBUG)
 
