@@ -58,10 +58,10 @@ class ContactRequest(SQLModel, table=True):
     uplink: bool
     telemetry: bool
     science: bool
-    aos: int
-    los: int
-    rf_on: int
-    rf_off: int
+    aos: datetime | None
+    los: datetime | None
+    rf_on: datetime | None
+    rf_off: datetime | None
     duration: int
 
     # satellite: Optional["Satellite"] = Relationship(back_populates="requests")

@@ -16,7 +16,7 @@ class Satellite(SQLModel, table=True):
     telemetry: float
     science: float
     priority: int
-    ex_cones: List["ExclusionCone"] = Relationship(back_populates="satellite")
+    ex_cones: Mapped[List["ExclusionCone"]] = Relationship(back_populates="satellite")
 
     # this init will most likely be removed soon
     def __init__(

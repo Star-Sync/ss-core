@@ -34,9 +34,9 @@ class Contact:
     uplink: bool
     telemetry: bool
     science: bool
-    aos: datetime.datetime
-    rf_on: datetime.datetime
-    rf_off: datetime.datetime
+    aos: datetime.datetime | None  # not sure if these should be nullable
+    rf_on: datetime.datetime | None
+    rf_off: datetime.datetime | None
 
 
 Request = RFRequest | ContactRequest
@@ -180,9 +180,9 @@ def schedule_with_slots(
                             uplink=request.uplink_time_requested > 0,
                             telemetry=request.downlink_time_requested > 0,
                             science=request.science_time_requested > 0,
-                            aos=0,
-                            rf_on=0,
-                            rf_off=0,
+                            aos=None,
+                            rf_on=None,
+                            rf_off=None,
                         )
 
                         slots[station_name][(start, end)] = contact
