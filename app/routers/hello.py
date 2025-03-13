@@ -23,7 +23,7 @@ def initdb():
     return {"message": "Database and tables created"}
 
 
-@router.get(
+@router.post(
     "/create_demo_data",
     summary="create demo data",
     response_description="Database and tables created",
