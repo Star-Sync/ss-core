@@ -14,7 +14,9 @@ from ..entities.Satellite import Satellite
 from ..entities.GroundStation import GroundStation
 from ..entities.Request import RFRequest, ContactRequest
 import uuid
-from app.main import logger
+import logging
+
+logger = logging.getLogger(__name__)
 
 random.seed(42)
 
