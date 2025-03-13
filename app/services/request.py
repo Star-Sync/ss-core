@@ -14,6 +14,7 @@ from ..entities.Satellite import Satellite
 from ..entities.GroundStation import GroundStation
 from ..entities.Request import RFRequest, ContactRequest
 import uuid
+from app.main import logger
 
 random.seed(42)
 
@@ -37,6 +38,7 @@ class Contact:
     aos: datetime.datetime | None  # not sure if these should be nullable
     rf_on: datetime.datetime | None
     rf_off: datetime.datetime | None
+    id: uuid.UUID = uuid.uuid4()
 
 
 Request = RFRequest | ContactRequest
@@ -348,6 +350,9 @@ class RequestService:
     ) -> list[Contact]:
         sats = SatelliteService.get_satellites(db)
         stations = GroundStationService.get_ground_stations(db)
+        if len(sats) < 2 or len(stations) < 2:
+            logger.error("Need at least 2 satellites and 2 ground stations to demo")
+            raise ValueError("Need at least 2 satellites and 2 ground stations to demo")
         requests: list[Request] = [
             RFRequest(
                 mission="Mission 1",
@@ -383,10 +388,10 @@ class RequestService:
                 uplink=True,
                 telemetry=True,
                 science=True,
-                aos=0,
-                los=0,
-                rf_on=0,
-                rf_off=0,
+                aos=None,
+                los=None,
+                rf_on=None,
+                rf_off=None,
                 duration=30,
                 priority=1,
                 contact_id=uuid.uuid4(),
@@ -401,10 +406,10 @@ class RequestService:
                 uplink=True,
                 telemetry=True,
                 science=True,
-                aos=0,
-                los=0,
-                rf_on=0,
-                rf_off=0,
+                aos=None,
+                los=None,
+                rf_on=None,
+                rf_off=None,
                 duration=30,
                 priority=1,
                 contact_id=uuid.uuid4(),
