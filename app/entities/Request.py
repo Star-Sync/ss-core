@@ -23,15 +23,23 @@ class RFRequest(SQLModel, table=True):
     contact_id: Optional[UUID]
     scheduled: bool = Field(default=False)
     priority: int  # Higher is better
-    uplink_time_requested: int
-    downlink_time_requested: int
-    science_time_requested: int
-    min_passes: int
+    uplink_time_requested: int = Field(default=0)
+    downlink_time_requested: int = Field(default=0)
+    science_time_requested: int = Field(default=0)
+    min_passes: int = Field(default=1)
     ground_station_id: Optional[int] = Field(
         default=None, foreign_key="ground_stations.id"
     )
-    time_remaining: int
-    num_passes_remaining: int
+    time_remaining: int = 0  # Will be set in __init__
+    num_passes_remaining: int = Field(default=min_passes)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.time_remaining = (
+            self.uplink_time_requested
+            + self.downlink_time_requested
+            + self.science_time_requested
+        )
 
     # copying over from old RFTime class
     def get_priority_weight(self) -> float:
