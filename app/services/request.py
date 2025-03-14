@@ -29,17 +29,8 @@ class Slot:
 
 @dataclass
 class Contact:
-    mission: str
-    satellite_id: uuid.UUID | None
     slot: Slot
-    ground_station_id: int | None
-    orbit: int
-    uplink: bool
-    telemetry: bool
-    science: bool
-    aos: datetime.datetime | None  # not sure if these should be nullable
-    rf_on: datetime.datetime | None
-    rf_off: datetime.datetime | None
+    request_id: uuid.UUID
     id: uuid.UUID = uuid.uuid4()
 
 
@@ -118,19 +109,8 @@ def schedule_with_slots(
                     continue
 
                 contact = Contact(
-                    mission=request.mission,
-                    satellite_id=request.satellite_id if request.satellite_id else None,
                     slot=Slot(start_time=start_time, end_time=end_time),
-                    ground_station_id=(
-                        request.ground_station_id if request.ground_station_id else None
-                    ),
-                    orbit=request.orbit,
-                    uplink=request.uplink,
-                    telemetry=request.telemetry,
-                    science=request.science,
-                    aos=request.aos,
-                    rf_on=request.rf_on,
-                    rf_off=request.rf_off,
+                    request_id=request.id,
                 )
 
                 slots[station_id][(start, start + slot_duration)] = contact
@@ -167,26 +147,11 @@ def schedule_with_slots(
                     if (start, end) not in slots[station_name]:
                         request.ground_station_id = gs.id
                         contact = Contact(
-                            mission=request.mission,
-                            satellite_id=(
-                                request.satellite_id if request.satellite_id else None
-                            ),
+                            request_id=request.id,
                             slot=Slot(
                                 start_time=start_time,
                                 end_time=end_time,
                             ),
-                            ground_station_id=(
-                                request.ground_station_id
-                                if request.ground_station_id
-                                else None
-                            ),
-                            orbit=0,
-                            uplink=request.uplink_time_requested > 0,
-                            telemetry=request.downlink_time_requested > 0,
-                            science=request.science_time_requested > 0,
-                            aos=None,
-                            rf_on=None,
-                            rf_off=None,
                         )
 
                         slots[station_name][(start, end)] = contact
@@ -340,11 +305,22 @@ def is_visible(
 
 
 class RequestService:
-    # @staticmethod
-    # def schedule_requests(
-    #     requests: list[Request], stations: list[GroundStation]
-    # ) -> list[Contact]:
-    #     return schedule_with_slots(requests, stations)
+    @staticmethod
+    def get_request(db: Session, request_id: uuid.UUID) -> Request | None:
+        rf_request = db.exec(
+            select(RFRequest).where(RFRequest.id == request_id)
+        ).first()
+        if rf_request is None:
+            c_request = db.exec(
+                select(ContactRequest).where(ContactRequest.id == request_id)
+            ).first()
+        else:
+            return rf_request
+        if c_request is None:
+            logger.error(f"Request with ID {request_id} not found")
+        else:
+            return c_request
+        return None
 
     @staticmethod
     def sample(
@@ -422,28 +398,54 @@ class RequestService:
 
     @staticmethod
     def transform_contact_to_general(
+        db: Session,
         contacts: list[Contact],
     ) -> list[GeneralContactResponseModel]:
         resp = []
         for contact in contacts:
+            request = RequestService.get_request(db, contact.request_id)
+            if request is None:
+                logger.error(f"Request with ID {contact.request_id} not found")
+                continue
+            if request.ground_station_id is None:
+                gs = None
+            else:
+                gs = GroundStationService.get_ground_station(
+                    db, request.ground_station_id
+                )
+                if gs is None:
+                    logger.error(
+                        f"Ground Station with ID {request.ground_station_id} not found"
+                    )
+                    continue
+
+            sat = SatelliteService.get_satellite(db, request.satellite_id)
+            if sat is None:
+                logger.error(f"Satellite with ID {request.satellite_id} not found")
+                continue
+
             gc = GeneralContactResponseModel(
                 requestType="RFTime",
-                mission=contact.mission,
-                satellite=str(contact.satellite_id),
-                station=str(contact.ground_station_id),
-                uplink=contact.uplink,
-                telemetry=contact.telemetry,
-                science=contact.science,
+                mission=request.mission,
+                satellite=sat.name,
+                station=gs.name if gs is not None else "N/A",
+                uplink=request.uplink if isinstance(request, ContactRequest) else 0,
+                telemetry=(
+                    request.telemetry if isinstance(request, ContactRequest) else 0
+                ),
+                science=request.science if isinstance(request, ContactRequest) else 0,
                 startTime=contact.slot.start_time,
                 endTime=contact.slot.end_time,
                 duration=(
-                    contact.slot.end_time - contact.slot.start_time
-                ).total_seconds(),
-                aos=contact.aos,
-                rf_on=contact.rf_on,
-                rf_off=contact.rf_off,
-                los=contact.rf_off,
-                orbit=str(contact.orbit),
+                    (contact.slot.end_time - contact.slot.start_time).total_seconds()
+                ),
+                aos=request.aos if isinstance(request, ContactRequest) else None,
+                rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
+                rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
+                los=request.rf_off if isinstance(request, ContactRequest) else None,
+                orbit=(
+                    str(request.orbit) if isinstance(request, ContactRequest) else "N/A"
+                ),
             )
             resp.append(gc)
         return resp
