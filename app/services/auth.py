@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from sqlmodel import Session, select
 from dotenv import load_dotenv
 import os
-import secrets 
+import secrets
 from pydantic import BaseModel
 from ..models.auth import User, UserCreate
 from app.services.db import get_db
