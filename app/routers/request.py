@@ -1,27 +1,13 @@
-#  type: ignore
-# ^ remove the type: ignore from the class definition when
-#  we have the correct basic types
-
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from app.services.db import get_db
 from sqlmodel import Session
-
+from uuid import UUID
 from app.models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
     ContactRequestModel,
 )
-
-# from ..services.request import (
-#     get_db_contact_times,
-#     schedule_contact,
-#     schedule_rf,
-#     map_to_response_model,
-# )
-
 from ..services.request import RequestService
 
 router = APIRouter(
@@ -33,6 +19,17 @@ router = APIRouter(
 
 @router.get(
     "/",
+    summary="Get all requests",
+    response_model=List[GeneralContactResponseModel],
+)
+def get_requests(
+    db: Session = Depends(get_db),
+):
+    return RequestService.get_all_requests(db)
+
+
+@router.get(
+    "/sample",
     summary="runs a sample demo of the service",
     response_model=List[GeneralContactResponseModel],
 )
@@ -40,47 +37,109 @@ def sample(
     db: Session = Depends(get_db),
 ):
     try:
-        # return RequestService.sample(db)
-        future_reqs = RequestService.transform_contact_to_general(
-            RequestService.sample(db)
-        )
+        future_reqs = RequestService.sample(db)
 
         return future_reqs
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get(
-#     "/",
-#     summary="Get all the scheduled requests",
-#     response_model=List[GeneralContactResponseModel],
-#     response_description="Scheduled requests",
-# )
-# def bookings():
-#     try:
-#         future_reqs = [map_to_response_model(booking) for c in get_db_contact_times()]
-#         return future_reqs
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
+@router.post(
+    "/rf-time",
+    summary="Ground Station RF Time Request",
+    response_model=RFTimeRequestModel,
+    response_description="Request body",
+)
+def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
+    RequestService.create_rf_request(db, request)
+    return request
 
 
-# @router.post(
-#     "/rf-time",
-#     summary="Ground Station RF Time Request",
-#     response_model=RFTimeRequestModel,
-#     response_description="Request body",
-# )
-# def rf_time(request: RFTimeRequestModel):
-#     schedule_rf(request)
-#     return request
+@router.post(
+    "/contact",
+    summary="Ground Station Contact Request",
+    response_model=ContactRequestModel,
+    response_description="Simple success string for now",
+)
+def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
+    RequestService.create_contact_request(db, request)
+    return request
 
 
-# @router.post(
-#     "/contact",
-#     summary="Ground Station Contact Request",
-#     response_model=ContactRequestModel,
-#     response_description="Simple success string for now",
-# )
-# def contact(request: ContactRequestModel):
-#     schedule_contact(request)
-#     return request
+@router.get(
+    "/rf-time/{request_id}",
+    summary="Get RF Time Request by ID",
+    response_model=RFTimeRequestModel,
+)
+def get_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
+    request = RequestService.get_rf_time_request(db, request_id)
+    if request is None:
+        raise HTTPException(
+            status_code=404, detail=f"RF Time Request with ID {request_id} not found"
+        )
+    # Convert entity to model
+    return RFTimeRequestModel(
+        missionName=request.mission,
+        satelliteId=request.satellite_id,
+        startTime=request.start_time,
+        endTime=request.end_time,
+        uplinkTime=float(request.uplink_time_requested),
+        downlinkTime=float(request.downlink_time_requested),
+        scienceTime=float(request.science_time_requested),
+        minimumNumberOfPasses=request.min_passes,
+    )
+
+
+@router.delete(
+    "/rf-time/{request_id}",
+    summary="Delete RF Time Request by ID",
+)
+def delete_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
+    request = RequestService.get_rf_time_request(db, request_id)
+    if request is None:
+        raise HTTPException(
+            status_code=404, detail=f"RF Time Request with ID {request_id} not found"
+        )
+    RequestService.delete_rf_time_request(db, request_id)
+    return {"message": "RF Time Request deleted successfully"}
+
+
+@router.get(
+    "/contact/{request_id}",
+    summary="Get Contact Request by ID",
+    response_model=ContactRequestModel,
+)
+def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
+    request = RequestService.get_contact_request(db, request_id)
+    if request is None:
+        raise HTTPException(
+            status_code=404, detail=f"Contact Request with ID {request_id} not found"
+        )
+    # Convert entity to model
+    return ContactRequestModel(
+        missionName=request.mission,
+        satelliteId=request.satellite_id,
+        location="N/A",  # This field might need to be populated from ground station info
+        orbit=f"SCISAT-{request.orbit}",
+        uplink=request.uplink,
+        telemetry=request.telemetry,
+        science=request.science,
+        aosTime=request.aos or request.start_time,
+        rfOnTime=request.rf_on or request.start_time,
+        rfOffTime=request.rf_off or request.end_time,
+        losTime=request.los or request.end_time,
+    )
+
+
+@router.delete(
+    "/contact/{request_id}",
+    summary="Delete Contact Request by ID",
+)
+def delete_contact_request(request_id: UUID, db: Session = Depends(get_db)):
+    request = RequestService.get_contact_request(db, request_id)
+    if request is None:
+        raise HTTPException(
+            status_code=404, detail=f"Contact Request with ID {request_id} not found"
+        )
+    RequestService.delete_contact_request(db, request_id)
+    return {"message": "Contact Request deleted successfully"}
