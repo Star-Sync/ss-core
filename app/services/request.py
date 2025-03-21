@@ -13,8 +13,11 @@ from app.services.satellite import SatelliteService
 from ..entities.Satellite import Satellite
 from ..entities.GroundStation import GroundStation
 from ..entities.Request import RFRequest, ContactRequest
+from ..models.request import ContactRequestModel, RFTimeRequestModel
 import uuid
 import logging
+from uuid import UUID
+
 
 logger = logging.getLogger(__name__)
 
@@ -279,32 +282,9 @@ def is_visible(
     return altitude.degrees > visibility_threshold  # type: ignore
 
 
-# needs to be implemented later
-# def reschedule_request(
-#     request: Request,
-#     stations: list[GroundStation],
-#     station_availability: dict[str, list[tuple[int, int]]],
-# ):
-#     for delay in [5, 10, 15]:
-#         new_start = request.start_time + datetime.timedelta(minutes=delay)
-#         new_end = request.end_time + datetime.timedelta(minutes=delay)
-
-#         for GroundStation in stations:
-#             if is_visible(
-#                 request.satellite.get_sf_sat(),
-#                 GroundStation,
-#                 new_start,
-#             ) and not station_availability[GroundStation.name].overlap(
-#                 new_start.timestamp(), new_end.timestamp()
-#             ):
-#                 request.start_time = new_start
-#                 request.end_time = new_end
-#                 request.GroundStation = GroundStation
-#                 return True
-#     return False
-
-
 class RequestService:
+
+    # crud requests
     @staticmethod
     def get_request(db: Session, request_id: uuid.UUID) -> Request | None:
         rf_request = db.exec(
@@ -323,9 +303,224 @@ class RequestService:
         return None
 
     @staticmethod
+    def get_rf_time_request(db: Session, request_id: UUID) -> RFRequest | None:
+        return db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
+
+    @staticmethod
+    def get_contact_request(db: Session, request_id: UUID) -> ContactRequest | None:
+        return db.exec(
+            select(ContactRequest).where(ContactRequest.id == request_id)
+        ).first()
+
+    @staticmethod
+    def create_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
+        try:
+            # Validate request data
+            if not request.missionName:
+                raise ValueError("Mission name cannot be empty")
+            if request.startTime >= request.endTime:
+                raise ValueError("Start time must be before end time")
+            if (
+                request.uplinkTime < 0
+                or request.downlinkTime < 0
+                or request.scienceTime < 0
+            ):
+                raise ValueError("Time requests cannot be negative")
+            if request.minimumNumberOfPasses is None:
+                request.minimumNumberOfPasses = 1
+            if request.minimumNumberOfPasses < 1:
+                raise ValueError("Minimum number of passes must be at least 1")
+
+            # Map the request model fields to entity fields
+            rf_request = RFRequest(
+                mission=request.missionName,
+                satellite_id=request.satelliteId,
+                start_time=request.startTime,
+                end_time=request.endTime,
+                uplink_time_requested=int(request.uplinkTime),
+                downlink_time_requested=int(request.downlinkTime),
+                science_time_requested=int(request.scienceTime),
+                min_passes=request.minimumNumberOfPasses or 1,
+                priority=1,  # Default priority
+                ground_station_id=None,  # Will be set by the scheduler
+                contact_id=None,  # Will be set when scheduled
+                scheduled=False,
+                time_remaining=0,  # Will be calculated in __init__
+                num_passes_remaining=request.minimumNumberOfPasses or 1,
+            )
+            # ensure utc timezone
+            rf_request.start_time = rf_request.start_time.replace(
+                tzinfo=datetime.timezone.utc
+            )
+            rf_request.end_time = rf_request.end_time.replace(
+                tzinfo=datetime.timezone.utc
+            )
+            print(rf_request.start_time)
+            print(rf_request.end_time)
+            db.add(rf_request)
+            db.commit()
+            db.refresh(rf_request)
+            return rf_request
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating RF request: {str(e)}")
+            raise
+
+    @staticmethod
+    def create_contact_request(
+        db: Session, request: ContactRequestModel
+    ) -> ContactRequest:
+        try:
+            # Validate request data
+            if not request.missionName:
+                raise ValueError("Mission name cannot be empty")
+            if request.aosTime >= request.losTime:
+                raise ValueError("AOS time must be before LOS time")
+            if request.rfOnTime >= request.rfOffTime:
+                raise ValueError("RF on time must be before RF off time")
+            if not request.orbit or not request.orbit.startswith("SCISAT-"):
+                raise ValueError("Invalid orbit format. Must start with 'SCISAT-'")
+
+            # Map the request model fields to entity fields
+            contact_request = ContactRequest(
+                mission=request.missionName,
+                satellite_id=request.satelliteId,
+                start_time=request.aosTime,  # Use AOS time as start time
+                end_time=request.losTime,  # Use LOS time as end time
+                ground_station_id=None,  # Will be set by the scheduler
+                orbit=(
+                    int(request.orbit.split("-")[1]) if "-" in request.orbit else 0
+                ),  # Extract orbit number
+                uplink=request.uplink,
+                telemetry=request.telemetry,
+                science=request.science,
+                aos=request.aosTime,
+                los=request.losTime,
+                rf_on=request.rfOnTime,
+                rf_off=request.rfOffTime,
+                duration=int((request.losTime - request.aosTime).total_seconds()),
+                priority=1,  # Default priority
+                contact_id=None,  # Will be set when scheduled
+                scheduled=False,
+            )
+            db.add(contact_request)
+            db.commit()
+            db.refresh(contact_request)
+            return contact_request
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating contact request: {str(e)}")
+            raise
+
+    @staticmethod
+    def update_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
+        rf_request = RFRequest(**request.model_dump())
+        db.add(rf_request)
+        db.commit()
+        db.refresh(rf_request)
+        return rf_request
+
+    @staticmethod
+    def delete_rf_time_request(db: Session, request_id: UUID) -> None:
+        request = db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
+        if request is None:
+            logger.error(f"RF Time Request with ID {request_id} not found")
+            return
+        db.delete(request)
+        db.commit()
+
+    @staticmethod
+    def delete_contact_request(db: Session, request_id: UUID) -> None:
+        request = db.exec(
+            select(ContactRequest).where(ContactRequest.id == request_id)
+        ).first()
+        if request is None:
+            logger.error(f"Contact Request with ID {request_id} not found")
+            return
+        db.delete(request)
+        db.commit()
+
+    @staticmethod
+    def get_all_requests(db: Session) -> list[GeneralContactResponseModel]:
+        rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
+        c_requests: list[ContactRequest] = list(db.exec(select(ContactRequest)).all())
+        contacts: list[GeneralContactResponseModel] = []
+        all_requests: list[Request] = [*rf_requests, *c_requests]
+        for request in all_requests:
+            result = RequestService.transform_request_to_general(db, request)
+            if result is not None:
+                contacts.append(result)
+        return contacts
+
+    @staticmethod
+    def transform_request_to_general(
+        db: Session,
+        request: Request,
+    ) -> GeneralContactResponseModel | None:
+        if request.ground_station_id is None:
+            gs = None
+        else:
+            gs = GroundStationService.get_ground_station(db, request.ground_station_id)
+            if gs is None:
+                logger.error(
+                    f"Ground Station with ID {request.ground_station_id} not found"
+                )
+                return None
+
+        sat = SatelliteService.get_satellite(db, request.satellite_id)
+        if sat is None:
+            logger.error(f"Satellite with ID {request.satellite_id} not found")
+            return None
+
+        return GeneralContactResponseModel(
+            requestType="RFTime" if isinstance(request, RFRequest) else "Contact",
+            id=request.id,
+            mission=request.mission,
+            satellite_name=sat.name,
+            station=gs.name if gs is not None else "N/A",
+            uplink=request.uplink if isinstance(request, ContactRequest) else 0,
+            telemetry=(request.telemetry if isinstance(request, ContactRequest) else 0),
+            science=request.science if isinstance(request, ContactRequest) else 0,
+            startTime=request.start_time,
+            endTime=request.end_time,
+            duration=((request.end_time - request.start_time).total_seconds()),
+            aos=request.aos if isinstance(request, ContactRequest) else None,
+            rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
+            rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
+            los=request.rf_off if isinstance(request, ContactRequest) else None,
+            orbit=(
+                str(request.orbit) if isinstance(request, ContactRequest) else "N/A"
+            ),
+        )
+
+    @staticmethod
+    def transform_contact_to_general(
+        db: Session,
+        contacts: list[Contact],
+    ) -> list[GeneralContactResponseModel]:
+        results: list[GeneralContactResponseModel] = []
+        for contact in contacts:
+            request = RequestService.get_request(db, contact.request_id)
+            if request is None:
+                logger.error(f"Request with ID {contact.request_id} not found")
+                continue
+
+            result = RequestService.transform_request_to_general(db, request)
+            if result is not None:
+                # Override the times with contact slot times
+                result.startTime = contact.slot.start_time
+                result.endTime = contact.slot.end_time
+                result.duration = (
+                    contact.slot.end_time - contact.slot.start_time
+                ).total_seconds()
+                results.append(result)
+
+        return results
+
+    @staticmethod
     def sample(
         db: Session,
-    ) -> list[Contact]:
+    ) -> list[GeneralContactResponseModel]:
         sats = SatelliteService.get_satellites(db)
         stations = GroundStationService.get_ground_stations(db)
         if len(sats) < 2 or len(stations) < 2:
@@ -393,59 +588,9 @@ class RequestService:
                 contact_id=uuid.uuid4(),
             ),
         ]
-        contacts = schedule_with_slots(requests, list(stations))
+        contacts = []
+        for request in requests:
+            result = RequestService.transform_request_to_general(db, request)
+            if result is not None:
+                contacts.append(result)
         return contacts
-
-    @staticmethod
-    def transform_contact_to_general(
-        db: Session,
-        contacts: list[Contact],
-    ) -> list[GeneralContactResponseModel]:
-        resp = []
-        for contact in contacts:
-            request = RequestService.get_request(db, contact.request_id)
-            if request is None:
-                logger.error(f"Request with ID {contact.request_id} not found")
-                continue
-            if request.ground_station_id is None:
-                gs = None
-            else:
-                gs = GroundStationService.get_ground_station(
-                    db, request.ground_station_id
-                )
-                if gs is None:
-                    logger.error(
-                        f"Ground Station with ID {request.ground_station_id} not found"
-                    )
-                    continue
-
-            sat = SatelliteService.get_satellite(db, request.satellite_id)
-            if sat is None:
-                logger.error(f"Satellite with ID {request.satellite_id} not found")
-                continue
-
-            gc = GeneralContactResponseModel(
-                requestType="RFTime",
-                mission=request.mission,
-                satellite=sat.name,
-                station=gs.name if gs is not None else "N/A",
-                uplink=request.uplink if isinstance(request, ContactRequest) else 0,
-                telemetry=(
-                    request.telemetry if isinstance(request, ContactRequest) else 0
-                ),
-                science=request.science if isinstance(request, ContactRequest) else 0,
-                startTime=contact.slot.start_time,
-                endTime=contact.slot.end_time,
-                duration=(
-                    (contact.slot.end_time - contact.slot.start_time).total_seconds()
-                ),
-                aos=request.aos if isinstance(request, ContactRequest) else None,
-                rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
-                rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
-                los=request.rf_off if isinstance(request, ContactRequest) else None,
-                orbit=(
-                    str(request.orbit) if isinstance(request, ContactRequest) else "N/A"
-                ),
-            )
-            resp.append(gc)
-        return resp
