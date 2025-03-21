@@ -9,7 +9,7 @@ from app.entities.ExclusionCone import ExclusionCone
 class Satellite(SQLModel, table=True):
     __tablename__: str = "satellites"  # type: ignore
 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(primary_key=True)
     name: str
     tle: str
     uplink: float
@@ -21,7 +21,7 @@ class Satellite(SQLModel, table=True):
     # this init will most likely be removed soon
     def __init__(
         self,
-        id: uuid.UUID = uuid.uuid4(),
+        id: uuid.UUID | None = None,
         name: str = "",
         tle: str = "",
         uplink: float = 0,
@@ -30,7 +30,7 @@ class Satellite(SQLModel, table=True):
         priority: int = 0,
         # ex_cone: Optional[List[ExclusionCone]] = None,
     ):
-        self.id = id
+        self.id = id if id is not None else uuid.uuid4()
         self.name = name
         self.tle = tle
         self.uplink = uplink
