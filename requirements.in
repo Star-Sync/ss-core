@@ -5,4 +5,9 @@ skyfield
 python-dotenv
 sqlmodel
 psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+types-python-jose
+types-passlib
+types-pyjwt
 pygelf

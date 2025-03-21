@@ -27,7 +27,8 @@ class SatelliteService:
         except SQLAlchemyError:
             db.rollback()
             raise HTTPException(
-                status_code=503, detail=f"Database error while creating satellite"
+                status_code=503,
+                detail=f"Database error while creating satellite{str(e)}",
             )
         except Exception as e:
             raise HTTPException(

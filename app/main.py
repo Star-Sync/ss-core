@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse  # type: ignore
 from pygelf import GelfTcpHandler
-from .routers import gs, hello, request, ground_station, satellite, exclusion_cone
+from .routers import gs, hello, request, ground_station, auth, satellite, exclusion_cone
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
+
+# for debugging, elevate the log level of the sqlalchemy engine
+db_logger = logging.getLogger("sqlalchemy.engine")
+db_logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
@@ -22,6 +26,7 @@ app.include_router(gs.router, prefix="/api/v1")
 app.include_router(hello.router, prefix="/api/v1")
 app.include_router(request.router, prefix="/api/v1")  # type: ignore
 app.include_router(ground_station.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(satellite.router, prefix="/api/v1")
 app.include_router(exclusion_cone.router, prefix="/api/v1")
 
