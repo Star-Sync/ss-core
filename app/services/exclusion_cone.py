@@ -33,16 +33,11 @@ class ExclusionConeService:
 
         except HTTPException as http_e:
             raise http_e
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate created exclusion cone: {str(ve)}",
-            )
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while creating exclusion cone",
+                detail=f"Database error while creating exclusion cone: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -77,16 +72,11 @@ class ExclusionConeService:
 
         except HTTPException as http_e:
             raise http_e
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate exclusion cone data for ID {cone_id}: {str(ve)}",
-            )
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while updating exclusion cone {cone_id}",
+                detail=f"Database error while updating exclusion cone {cone_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -100,14 +90,11 @@ class ExclusionConeService:
             statement = select(ExclusionCone)
             ex_cones = db.exec(statement).all()
             return [ExclusionConeModel.model_validate(ec) for ec in ex_cones]
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400, detail=f"Failed to validate exclusion cones: {str(ve)}"
-            )
-        except SQLAlchemyError:
+
+        except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while fetching exclusion cones",
+                detail=f"Database error while fetching exclusion cones: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -126,17 +113,13 @@ class ExclusionConeService:
                     detail=f"Exclusion cone with ID {ex_cone_id} not found",
                 )
             return ExclusionConeModel.model_validate(ex_cone)
+
         except HTTPException as http_e:
             raise http_e
-        except ValidationError as ve:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to validate exclusion cone data for ID {ex_cone_id}: {str(ve)}",
-            )
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while fetching exclusion cone {ex_cone_id}",
+                detail=f"Database error while fetching exclusion cone {ex_cone_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -162,11 +145,11 @@ class ExclusionConeService:
 
         except HTTPException as http_e:
             raise http_e
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while deleting exclusion cone {ex_cone_id}",
+                detail=f"Database error while deleting exclusion cone {ex_cone_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(

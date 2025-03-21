@@ -24,11 +24,12 @@ class SatelliteService:
             db.commit()
             db.refresh(sat)
             return SatelliteModel.model_validate(sat)
-        except SQLAlchemyError:
+
+        except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while creating satellite{str(e)}",
+                detail=f"Database error while creating satellite: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -66,11 +67,11 @@ class SatelliteService:
 
         except HTTPException as http_e:
             raise http_e
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while updating satellite {sat_id}",
+                detail=f"Database error while updating satellite {sat_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -87,10 +88,10 @@ class SatelliteService:
             satellites = db.exec(statement).unique().all()
             return [SatelliteModel.model_validate(sat) for sat in satellites]
 
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while fetching satellites",
+                detail=f"Database error while fetching satellites: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -118,10 +119,10 @@ class SatelliteService:
 
         except HTTPException as http_e:
             raise http_e
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while fetching satellite {sat_id}",
+                detail=f"Database error while fetching satellite {sat_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
@@ -155,10 +156,10 @@ class SatelliteService:
 
         except HTTPException as http_e:
             raise http_e
-        except SQLAlchemyError:
+        except SQLAlchemyError as e:
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while deleting satellite {sat_id}",
+                detail=f"Database error while deleting satellite {sat_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
