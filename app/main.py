@@ -6,8 +6,11 @@ from pygelf import GelfTcpHandler
 from .routers import gs, hello, request, ground_station, auth, satellite, exclusion_cone
 import logging
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
+# for debugging, elevate the log level of the sqlalchemy engine
+db_logger = logging.getLogger("sqlalchemy.engine")
+db_logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 

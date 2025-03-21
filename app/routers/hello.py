@@ -21,3 +21,15 @@ def initdb():
 
     create_db_and_tables()
     return {"message": "Database and tables created"}
+
+
+@router.post(
+    "/create_demo_data",
+    summary="create demo data",
+    response_description="Database and tables created",
+)
+def create_demo_data():
+    from ..services.db import create_demo_data
+
+    create_demo_data()
+    return {"message": "Database and tables created"}
