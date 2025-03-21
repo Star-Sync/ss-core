@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
-class UserCreateModel():
+class UserCreateModel(BaseModel):
     """
     Pydantic model class for creating a new user.
     """
@@ -9,7 +9,8 @@ class UserCreateModel():
     password: str = Field(description="Password", examples=["isaiahspassword"])
     email: str = Field(description="User email", examples=["goisaiah@gmail.com"])
     first_name: str = Field(description="User's first name", examples=["Isaiah"])
-    last_name: str = Field(description="User's role (admin or user)", examples=["admin", "user"])
+    last_name: str = Field(description="User's last name", examples=["Gocool"])
+    role: str = Field(description="User's role (admin or user)", examples=["admin", "user"])
 
 class UserModel(UserCreateModel):
     """
