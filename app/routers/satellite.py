@@ -19,6 +19,7 @@ router = APIRouter(prefix="/satellites", tags=["Satellite"])
     "/",
     summary="Create a new Satellite",
     response_model=SatelliteModel,
+    response_description="Created satellite object",
     responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db)):
@@ -30,8 +31,8 @@ def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db
     "/{satellite_id}",
     summary="Update a Satellite",
     response_model=SatelliteModel,
-    response_description="Satellite updated response",
-    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+    response_description="Updated satellite object",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def update_satellite(
     satellite_id: uuid.UUID,
@@ -46,7 +47,8 @@ def update_satellite(
     "/",
     summary="Get a list of all satellites",
     response_model=List[SatelliteModel],
-    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+    response_description="List of satellite objects",
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_satellites(db: Session = Depends(get_db)):
     return SatelliteService.get_satellites(db)
@@ -57,6 +59,7 @@ def get_satellites(db: Session = Depends(get_db)):
     "/{satellite_id}",
     summary="Get a satellite by id",
     response_model=SatelliteModel,
+    response_description="Specific satellite object",
     responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
