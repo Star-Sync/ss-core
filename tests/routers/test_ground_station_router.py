@@ -6,6 +6,7 @@ from app.models.ground_station import GroundStationModel
 from app.main import app
 from app.services.db import get_db
 from app.services.ground_station import GroundStationService
+from fastapi import HTTPException
 
 
 @pytest.fixture(name="mock_db")
@@ -129,28 +130,57 @@ def test_get_ground_station(client: TestClient):
 
 
 def test_get_ground_station_not_found(client: TestClient):
-    with patch.object(GroundStationService, "get_ground_station", return_value=None):
-        response = client.get(f"{_ver_prefix}/gs/999")
+    gs_id = 999
+
+    with patch.object(
+        GroundStationService,
+        "get_ground_station",
+        side_effect=HTTPException(
+            status_code=404, detail=f"Ground station with ID {gs_id} not found"
+        ),
+    ):
+        response = client.get(f"{_ver_prefix}/gs/{gs_id}")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Ground station not found"}
+    assert response.json() == {"detail": "Ground station with ID 999 not found"}
 
 
 def test_delete_ground_station(client: TestClient):
     gs_id = 1
 
-    with patch.object(GroundStationService, "delete_ground_station", return_value=True):
+    print(_mock_db_response)
+
+    with patch.object(
+        GroundStationService, "delete_ground_station", return_value=_mock_db_response
+    ):
         response = client.delete(f"{_ver_prefix}/gs/{gs_id}")
 
     assert response.status_code == 200
-    assert response.json() == {"detail": "Ground station deleted successfully"}
+
+    data = response.json()
+
+    assert data["id"] == 1
+    assert data["name"] == "Test Station"
+    assert data["lat"] == 68.3
+    assert data["lon"] == 133.5
+    assert data["height"] == 100.0
+    assert data["mask"] == 5
+    assert data["uplink"] == 50
+    assert data["downlink"] == 100
+    assert data["science"] == 100
 
 
 def test_delete_ground_station_not_found(client: TestClient):
+    gs_id = 999
+
     with patch.object(
-        GroundStationService, "delete_ground_station", return_value=False
+        GroundStationService,
+        "delete_ground_station",
+        side_effect=HTTPException(
+            status_code=404, detail=f"Ground station with ID {gs_id} not found"
+        ),
     ):
         response = client.delete(f"{_ver_prefix}/gs/999")
 
     assert response.status_code == 404
-    assert response.json() == {"detail": "Ground station not found"}
+    assert response.json() == {"detail": "Ground station with ID 999 not found"}

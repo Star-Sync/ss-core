@@ -48,7 +48,7 @@ class GroundStationService:
 
             if not existing_gs:
                 raise HTTPException(
-                    status_code=404, detail=f"Ground Station with ID {gs_id} not found"
+                    status_code=404, detail=f"Ground station with ID {gs_id} not found"
                 )
 
             update_data = request.model_dump(exclude_unset=True)
