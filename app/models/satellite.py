@@ -3,11 +3,6 @@ import uuid
 from pydantic import BaseModel, Field
 from app.models.exclusion_cone import ExclusionConeModel
 
-# from typing import TYPE_CHECKING
-
-# if TYPE_CHECKING:
-#     from .exclusion_cone import ExclusionConeModel
-
 
 class SatelliteCreateModel(BaseModel):
     """
@@ -24,10 +19,14 @@ class SatelliteCreateModel(BaseModel):
             "SCISAT 1\n1 27858U 03036A   24298.42572809  .00002329  00000+0  31378-3 0  9994\n2 27858  73.9300 283.7690 0006053 131.3701 228.7996 14.79804256142522"
         ],
     )
-    uplink: float = Field(description="Uplink data rate in Kbps", examples=[40.0])
-    telemetry: float = Field(description="Downlink data rate in Mbps", examples=[100.0])
-    science: float = Field(description="Science data rate in Mbps", examples=[100.0])
-    priority: int = Field(description="Priority of the satellite", examples=[1])
+    uplink: float = Field(ge=0, description="Uplink data rate in Kbps", examples=[40.0])
+    telemetry: float = Field(
+        ge=0, description="Downlink data rate in Mbps", examples=[100.0]
+    )
+    science: float = Field(
+        ge=0, description="Science data rate in Mbps", examples=[100.0]
+    )
+    priority: int = Field(ge=0, description="Priority of the satellite", examples=[1])
 
 
 class SatelliteModel(SatelliteCreateModel):
@@ -67,14 +66,14 @@ class SatelliteUpdateModel(BaseModel):
         ],
     )
     uplink: Optional[float] = Field(
-        default=None, description="Uplink data rate in Kbps", examples=[40.0]
+        ge=0, default=None, description="Uplink data rate in Kbps", examples=[40.0]
     )
     telemetry: Optional[float] = Field(
-        default=None, description="Downlink data rate in Mbps", examples=[100.0]
+        ge=0, default=None, description="Downlink data rate in Mbps", examples=[100.0]
     )
     science: Optional[float] = Field(
-        default=None, description="Science data rate in Mbps", examples=[100.0]
+        ge=0, default=None, description="Science data rate in Mbps", examples=[100.0]
     )
     priority: Optional[int] = Field(
-        default=None, description="Priority of the satellite", examples=[1]
+        ge=0, default=None, description="Priority of the satellite", examples=[1]
     )
