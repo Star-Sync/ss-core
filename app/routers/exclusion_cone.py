@@ -52,7 +52,7 @@ def update_exclusion_cone(
     response_description="List of exclusion cone objects",
     responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
-def get_exclusion_cones(db: Session = Depends(get_db)) -> list[ExclusionConeModel]:
+def get_exclusion_cones(db: Session = Depends(get_db)):
     return ExclusionConeService.get_exclusion_cones(db)
 
 

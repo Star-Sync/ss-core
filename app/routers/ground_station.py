@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from typing import List
 from app.models.ground_station import GroundStationModel, GroundStationUpdateModel
 from sqlmodel import Session
