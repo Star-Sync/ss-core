@@ -50,17 +50,17 @@ class UserService:
         
         return user
     
-    @staticmethod
-    def delete_user(db: Session, user_id: int, current_user: UserModel):
-        statement = select(User).where(User.id == user_id)
-        user = db.exec(statement).first()
+    # @staticmethod
+    # def delete_user(db: Session, user_id: int, current_user: UserModel):
+    #     statement = select(User).where(User.id == user_id)
+    #     user = db.exec(statement).first()
 
-        if not user:
-            raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+    #     if not user:
+    #         raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
         
-        if current_user.role != "admin" and current_user.id != user_id:
-            raise HTTPException(status_code=403, detail="Permission denied")
+    #     if current_user.role != "admin" and current_user.id != user_id:
+    #         raise HTTPException(status_code=403, detail="Permission denied")
         
-        db.delete(user)
-        db.commit()
-        return {"detail": "User {user_id} deleted successfully"}
+    #     db.delete(user)
+    #     db.commit()
+    #     return {"detail": "User {user_id} deleted successfully"}
