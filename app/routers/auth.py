@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
 from ..services import auth
-from ..models.auth import User, UserCreate, UserRead
+from ..entities.User import User, UserCreate, UserRead
 from app.services.db import get_db
 
 router = APIRouter(

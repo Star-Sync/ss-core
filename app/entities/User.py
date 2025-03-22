@@ -12,6 +12,9 @@ class User(SQLModel, table=True):
     hashed_password: str
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.now)
+    first_name: Optional[str] = Field(nullable=False, default="")
+    last_name: Optional[str] = Field(nullable=False, default="")
+    role: str = Field(nullable=False, default="user", description="Role of the user (admin/user)")
 
 
 class UserCreate(SQLModel):
