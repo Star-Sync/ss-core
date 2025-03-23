@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from app.entities.Satellite import Satellite
 
 
-class RFRequest(SQLModel, table=True):
+class RFRequest(SQLModel, table=True):  # type: ignore
     """RF Request entity for database storage"""
 
     __tablename__ = "rf_request"  # type: ignore
@@ -71,7 +71,7 @@ class RFRequest(SQLModel, table=True):
     # ground_station: Optional["GroundStation"] = Relationship()
 
 
-class ContactRequest(SQLModel, table=True):
+class ContactRequest(SQLModel, table=True):  # type: ignore
     """Contact Request entity for database storage"""
 
     __tablename__ = "contact_request"  # type: ignore
@@ -92,10 +92,10 @@ class ContactRequest(SQLModel, table=True):
     uplink: bool
     telemetry: bool
     science: bool
-    aos: datetime | None
-    los: datetime | None
-    rf_on: datetime | None
-    rf_off: datetime | None
+    aos: datetime
+    los: datetime
+    rf_on: datetime
+    rf_off: datetime
     duration: int
 
     # satellite: Optional["Satellite"] = Relationship(back_populates="requests")
