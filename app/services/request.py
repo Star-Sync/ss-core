@@ -443,9 +443,7 @@ class RequestService:
                 rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
                 rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
                 los=request.rf_off if isinstance(request, ContactRequest) else None,
-                orbit=(
-                    str(request.orbit) if isinstance(request, ContactRequest) else "N/A"
-                ),
+                orbit=request.orbit if isinstance(request, ContactRequest) else None,
             )
             resp.append(gc)
         return resp

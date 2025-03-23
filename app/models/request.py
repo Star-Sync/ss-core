@@ -52,9 +52,9 @@ class ContactRequestModel(BaseModel):
     location: str = Field(
         description="The station the request is for", examples=["Inuvik Northwest"]
     )
-    orbit: str = Field(
+    orbit: int = Field(
         description="The orbit number of the satellite at the time of AOS",
-        examples=["SCISAT-1234"],
+        examples=[1234],
     )
     uplink: bool = Field(
         description="Is an uplink required for this contact", examples=[True]
@@ -101,9 +101,9 @@ class GeneralContactResponseModel(BaseModel):
     station: str = Field(
         description="The station the request is for", examples=["Inuvik"]
     )
-    orbit: Optional[str] = Field(
+    orbit: Optional[int] = Field(
         description="The orbit number of the satellite at the time of AOS",
-        examples=["SCISAT-1234"],
+        examples=[1234],
     )
     uplink: int = Field(
         description="Is an uplink required for this contact", examples=[True]
