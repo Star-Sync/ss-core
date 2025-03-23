@@ -378,8 +378,6 @@ class RequestService:
                 raise ValueError("AOS time must be before LOS time")
             if request.rfOnTime >= request.rfOffTime:
                 raise ValueError("RF on time must be before RF off time")
-            if not request.orbit or not request.orbit.startswith("SCISAT-"):
-                raise ValueError("Invalid orbit format. Must start with 'SCISAT-'")
 
             # Map the request model fields to entity fields
             contact_request = ContactRequest(
@@ -388,9 +386,7 @@ class RequestService:
                 start_time=request.aosTime,  # Use AOS time as start time
                 end_time=request.losTime,  # Use LOS time as end time
                 ground_station_id=None,  # Will be set by the scheduler
-                orbit=(
-                    int(request.orbit.split("-")[1]) if "-" in request.orbit else 0
-                ),  # Extract orbit number
+                orbit=request.orbit,
                 uplink=request.uplink,
                 telemetry=request.telemetry,
                 science=request.science,
@@ -488,9 +484,7 @@ class RequestService:
             rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
             rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
             los=request.rf_off if isinstance(request, ContactRequest) else None,
-            orbit=(
-                str(request.orbit) if isinstance(request, ContactRequest) else "N/A"
-            ),
+            orbit=request.orbit if isinstance(request, ContactRequest) else None,
         )
 
     @staticmethod
