@@ -103,6 +103,7 @@ def test_get_ground_station(db_session: Session):
 
     result = GroundStationService.get_ground_station(db_session, 1)
 
+    assert result is not None
     assert result.id == 1
     assert result.name == "Test Station"
     assert result.lat == 68.3
