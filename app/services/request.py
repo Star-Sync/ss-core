@@ -307,10 +307,45 @@ class RequestService:
         return db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
 
     @staticmethod
-    def get_contact_request(db: Session, request_id: UUID) -> ContactRequest | None:
-        return db.exec(
+    def get_contact_request(
+        db: Session, request_id: UUID
+    ) -> ContactRequestModel | None:
+        contact_request = db.exec(
             select(ContactRequest).where(ContactRequest.id == request_id)
         ).first()
+        if contact_request is None:
+            return None
+
+        # Get ground station if available, but don't fail if not found
+        gs = None
+        if contact_request.ground_station_id is not None:
+            gs = GroundStationService.get_ground_station(
+                db, contact_request.ground_station_id
+            )
+            if gs is None:
+                logger.warning(
+                    f"Ground station with ID {contact_request.ground_station_id} not found"
+                )
+                # Use a default name if ground station not found
+                gs_name = "Unknown Station"
+            else:
+                gs_name = gs.name
+        else:
+            gs_name = "N/A"
+
+        return ContactRequestModel(
+            missionName=contact_request.mission,
+            satelliteId=contact_request.satellite_id,
+            location=gs_name,
+            orbit=contact_request.orbit,
+            uplink=contact_request.uplink,
+            telemetry=contact_request.telemetry,
+            science=contact_request.science,
+            aosTime=contact_request.aos,
+            rfOnTime=contact_request.rf_on,
+            rfOffTime=contact_request.rf_off,
+            losTime=contact_request.los,
+        )
 
     @staticmethod
     def create_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
@@ -355,8 +390,6 @@ class RequestService:
             rf_request.end_time = rf_request.end_time.replace(
                 tzinfo=datetime.timezone.utc
             )
-            print(rf_request.start_time)
-            print(rf_request.end_time)
             db.add(rf_request)
             db.commit()
             db.refresh(rf_request)
@@ -437,7 +470,7 @@ class RequestService:
         db.commit()
 
     @staticmethod
-    def get_all_requests(db: Session) -> list[GeneralContactResponseModel]:
+    def get_all_transformed_requests(db: Session) -> list[GeneralContactResponseModel]:
         rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
         c_requests: list[ContactRequest] = list(db.exec(select(ContactRequest)).all())
         contacts: list[GeneralContactResponseModel] = []
@@ -447,6 +480,13 @@ class RequestService:
             if result is not None:
                 contacts.append(result)
         return contacts
+
+    @staticmethod
+    def get_all_requests(db: Session) -> list[Request]:
+        rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
+        c_requests: list[ContactRequest] = list(db.exec(select(ContactRequest)).all())
+
+        return [*rf_requests, *c_requests]
 
     @staticmethod
     def transform_request_to_general(
@@ -512,6 +552,17 @@ class RequestService:
         return results
 
     @staticmethod
+    def get_bookings(db: Session) -> list[Contact]:
+        # get all requests and schedule them
+        requests = RequestService.get_all_requests(db)
+        contacts = schedule_with_slots(
+            requests,
+            list(GroundStationService.get_ground_stations(db)),
+        )
+        # Transform contacts to GeneralContactResponseModel
+        return contacts
+
+    @staticmethod
     def sample(
         db: Session,
     ) -> list[GeneralContactResponseModel]:
@@ -532,6 +583,7 @@ class RequestService:
                 min_passes=1,
                 priority=1,
                 contact_id=uuid.uuid4(),
+                num_passes_remaining=1,  # Set explicit integer value
             ),
             RFRequest(
                 mission="Mission 2",
@@ -544,6 +596,7 @@ class RequestService:
                 min_passes=1,
                 priority=1,
                 contact_id=uuid.uuid4(),
+                num_passes_remaining=1,  # Set explicit integer value
             ),
             ContactRequest(
                 mission="Mission 4",
@@ -555,10 +608,10 @@ class RequestService:
                 uplink=True,
                 telemetry=True,
                 science=True,
-                aos=None,
-                los=None,
-                rf_on=None,
-                rf_off=None,
+                aos=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                los=datetime.datetime(2025, 1, 1, 1, 0, 0),
+                rf_on=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
                 contact_id=uuid.uuid4(),
@@ -573,16 +626,20 @@ class RequestService:
                 uplink=True,
                 telemetry=True,
                 science=True,
-                aos=None,
-                los=None,
-                rf_on=None,
-                rf_off=None,
+                aos=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                los=datetime.datetime(2025, 1, 1, 1, 0, 0),
+                rf_on=datetime.datetime(2025, 1, 1, 0, 0, 0),
+                rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
                 contact_id=uuid.uuid4(),
             ),
         ]
         contacts = []
+        # commit requests to db
+        for request in requests:
+            db.add(request)
+        db.commit()
         for request in requests:
             result = RequestService.transform_request_to_general(db, request)
             if result is not None:

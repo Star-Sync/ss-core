@@ -8,7 +8,13 @@ from app.models.request import (
     RFTimeRequestModel,
     ContactRequestModel,
 )
-from ..services.request import RequestService
+from ..services.request import (
+    RequestService,
+    Contact,
+)  # we should be importing Contact from somwhere better
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/request",
@@ -25,7 +31,22 @@ router = APIRouter(
 def get_requests(
     db: Session = Depends(get_db),
 ):
-    return RequestService.get_all_requests(db)
+    try:
+        return RequestService.get_all_transformed_requests(db)
+    except Exception as e:
+        logger.error(f"Error getting all requests: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/bookings",
+    summary="Get all bookings",
+    response_model=List[Contact],
+)
+def get_bookings(
+    db: Session = Depends(get_db),
+):
+    return RequestService.get_bookings(db)
 
 
 @router.get(
@@ -51,8 +72,17 @@ def sample(
     response_description="Request body",
 )
 def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
-    RequestService.create_rf_request(db, request)
-    return request
+    try:
+        created_request = RequestService.create_rf_request(db, request)
+        if created_request is None:
+            raise HTTPException(status_code=400, detail="Failed to create RF request")
+        return request
+    except ValueError as e:
+        logger.error(f"Validation error creating RF request: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error creating RF request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post(
@@ -62,8 +92,15 @@ def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
     response_description="Simple success string for now",
 )
 def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
-    RequestService.create_contact_request(db, request)
-    return request
+    try:
+        resp = RequestService.create_contact_request(db, request)
+        if resp is None:
+            raise HTTPException(
+                status_code=400, detail="Failed to create contact request"
+            )
+        return resp
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
@@ -115,20 +152,7 @@ def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=404, detail=f"Contact Request with ID {request_id} not found"
         )
-    # Convert entity to model
-    return ContactRequestModel(
-        missionName=request.mission,
-        satelliteId=request.satellite_id,
-        location="N/A",  # This field might need to be populated from ground station info
-        orbit=f"SCISAT-{request.orbit}",
-        uplink=request.uplink,
-        telemetry=request.telemetry,
-        science=request.science,
-        aosTime=request.aos or request.start_time,
-        rfOnTime=request.rf_on or request.start_time,
-        rfOffTime=request.rf_off or request.end_time,
-        losTime=request.los or request.end_time,
-    )
+    return request
 
 
 @router.delete(
