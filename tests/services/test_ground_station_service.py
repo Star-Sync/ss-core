@@ -1,3 +1,4 @@
+from fastapi import HTTPException
 import pytest
 from app.entities.Satellite import Satellite
 from app.entities.ExclusionCone import ExclusionCone
@@ -84,7 +85,7 @@ def test_update_ground_station_not_found(db_session: Session):
 
     with pytest.raises(Exception) as e:
         GroundStationService.update_ground_station(db_session, gs_id, updated_gs_model)
-    assert "Ground Station with ID 2 not found" in str(e.value)
+    assert "Ground station with ID 2 not found" in str(e.value)
 
 
 def test_get_ground_stations(db_session: Session):
@@ -120,12 +121,22 @@ def test_delete_ground_station(db_session: Session):
 
     result = GroundStationService.delete_ground_station(db_session, 1)
 
-    assert result is True
+    assert result.id == 1
+    assert result.name == "Test Station"
+    assert result.lat == 68.3
+    assert result.lon == 133.5
+    assert result.height == 100.0
+    assert result.mask == 5
+    assert result.uplink == 50
+    assert result.downlink == 100
+    assert result.science == 100
 
 
 def test_delete_ground_station_not_found(db_session: Session):
     GroundStationService.create_ground_station(db_session, _gs_create_model)
 
-    result = GroundStationService.delete_ground_station(db_session, 2)
+    gs_id = 999
 
-    assert result is False
+    with pytest.raises(HTTPException) as e:
+        GroundStationService.delete_ground_station(db_session, gs_id)
+    assert "Ground station with ID 999 not found" in str(e.value)

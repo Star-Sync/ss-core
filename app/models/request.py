@@ -57,7 +57,7 @@ class ContactRequestModel(BaseModel):
     )
     orbit: int = Field(
         description="The orbit number of the satellite at the time of AOS",
-        examples=[0],
+        examples=[1234],
     )
     uplink: bool = Field(
         description="Is an uplink required for this contact", examples=[True]
@@ -110,7 +110,7 @@ class GeneralContactResponseModel(BaseModel):
     )
     orbit: Optional[int] = Field(
         description="The orbit number of the satellite at the time of AOS",
-        examples=[0],
+        examples=[1234],
     )
     uplink: int = Field(
         description="Is an uplink required for this contact", examples=[True]
