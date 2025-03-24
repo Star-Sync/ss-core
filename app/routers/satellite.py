@@ -7,6 +7,7 @@ from app.models.satellite import (
     SatelliteUpdateModel,
 )
 from sqlmodel import Session
+from app.routers.error import getErrorResponses
 from app.services.db import get_db
 from app.services.satellite import SatelliteService
 
@@ -18,7 +19,8 @@ router = APIRouter(prefix="/satellites", tags=["Satellite"])
     "/",
     summary="Create a new Satellite",
     response_model=SatelliteModel,
-    response_description="Satellite created response",
+    response_description="Created satellite object",
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db)):
     return SatelliteService.create_satellite(db, request)
@@ -29,7 +31,8 @@ def create_satellite(request: SatelliteCreateModel, db: Session = Depends(get_db
     "/{satellite_id}",
     summary="Update a Satellite",
     response_model=SatelliteModel,
-    response_description="Satellite updated response",
+    response_description="Updated satellite object",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def update_satellite(
     satellite_id: uuid.UUID,
@@ -41,7 +44,11 @@ def update_satellite(
 
 # GET /api/v1/satellites
 @router.get(
-    "/", summary="Get a list of all satellites", response_model=List[SatelliteModel]
+    "/",
+    summary="Get a list of all satellites",
+    response_model=List[SatelliteModel],
+    response_description="List of satellite objects",
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_satellites(db: Session = Depends(get_db)):
     return SatelliteService.get_satellites(db)
@@ -49,7 +56,11 @@ def get_satellites(db: Session = Depends(get_db)):
 
 # GET /api/v1/satellites/{satellite_id}
 @router.get(
-    "/{satellite_id}", summary="Get a satellite by id", response_model=SatelliteModel
+    "/{satellite_id}",
+    summary="Get a satellite by id",
+    response_model=SatelliteModel,
+    response_description="Specific satellite object",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
     return SatelliteService.get_satellite(db, satellite_id)
@@ -61,6 +72,7 @@ def get_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
     summary="Delete a Satellite",
     response_model=SatelliteModel,
     response_description="Deleted satellite object",
+    responses={**getErrorResponses(404), **getErrorResponses(409), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def delete_satellite(satellite_id: uuid.UUID, db: Session = Depends(get_db)):
     return SatelliteService.delete_satellite(db, satellite_id)
