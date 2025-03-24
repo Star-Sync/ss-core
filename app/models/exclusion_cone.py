@@ -14,7 +14,7 @@ class ExclusionConeCreateModel(BaseModel):
         examples=["SCISAT"],
     )
     angle_limit: float = Field(
-        description="The limiting angle between the two objects.", examples=[5.0]
+        ge=0, description="The limiting angle between the two objects.", examples=[5.0]
     )
     interfering_satellite: str = Field(
         description="The satellite which must be deconflicted against.",
@@ -25,7 +25,9 @@ class ExclusionConeCreateModel(BaseModel):
         examples=["7b16adda-0dfc-48d0-9902-0da6da504a71"],
     )
     gs_id: int = Field(
-        description="The station for which the exclusion cone will apply.", examples=[1]
+        ge=0,
+        description="The station for which the exclusion cone will apply.",
+        examples=[1],
     )
 
 
@@ -54,6 +56,7 @@ class ExclusionConeUpdateModel(BaseModel):
         examples=["SCISAT"],
     )
     angle_limit: Optional[float] = Field(
+        ge=0,
         default=None,
         description="The limiting angle between the two objects.",
         examples=[5.0],
@@ -69,6 +72,7 @@ class ExclusionConeUpdateModel(BaseModel):
         examples=["7b16adda-0dfc-48d0-9902-0da6da504a71"],
     )
     gs_id: Optional[int] = Field(
+        ge=0,
         default=None,
         description="The station for which the exclusion cone will apply.",
         examples=[1],

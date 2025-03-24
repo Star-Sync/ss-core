@@ -21,12 +21,17 @@ class GroundStationCreateModel(BaseModel):
         examples=[102.5],
     )
     mask: int = Field(
+        ge=0,
         description="Mask angle of the ground station in degrees. (Note: for now the value is the same for Receive and Send)",
         examples=[5],
     )
-    uplink: float = Field(description="Uplink data rate in Kbps", examples=[40.0])
-    downlink: float = Field(description="Downlink data rate in Mbps", examples=[100.0])
-    science: float = Field(description="Science data rate in Mbps", examples=[100.0])
+    uplink: float = Field(ge=0, description="Uplink data rate in Kbps", examples=[40.0])
+    downlink: float = Field(
+        ge=0, description="Downlink data rate in Mbps", examples=[100.0]
+    )
+    science: float = Field(
+        ge=0, description="Science data rate in Mbps", examples=[100.0]
+    )
 
 
 class GroundStationModel(GroundStationCreateModel):
@@ -63,18 +68,19 @@ class GroundStationUpdateModel(BaseModel):
         examples=[102.5],
     )
     mask: Optional[int] = Field(
+        ge=0,
         default=None,
         description="Mask angle of the ground station in degrees",
         examples=[5],
     )
     uplink: Optional[float] = Field(
-        default=None, description="Uplink data rate in Kbps", examples=[40.0]
+        ge=0, default=None, description="Uplink data rate in Kbps", examples=[40.0]
     )
     downlink: Optional[float] = Field(
-        default=None, description="Downlink data rate in Mbps", examples=[100.0]
+        ge=0, default=None, description="Downlink data rate in Mbps", examples=[100.0]
     )
     science: Optional[float] = Field(
-        default=None, description="Science data rate in Mbps", examples=[100.0]
+        ge=0, default=None, description="Science data rate in Mbps", examples=[100.0]
     )
 
     class Config:
