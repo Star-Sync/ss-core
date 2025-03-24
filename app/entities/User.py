@@ -6,6 +6,8 @@ from sqlmodel import SQLModel, Field  # type: ignore
 class User(SQLModel, table=True):
     """User model for authentication"""
 
+    __tablename__: str = "users"  # type: ignore
+
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     email: str = Field(unique=True, index=True)
@@ -14,7 +16,9 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     first_name: Optional[str] = Field(nullable=False, default="")
     last_name: Optional[str] = Field(nullable=False, default="")
-    role: str = Field(nullable=False, default="user", description="Role of the user (admin/user)")
+    role: str = Field(
+        nullable=False, default="user", description="Role of the user (admin/user)"
+    )
 
 
 class UserCreate(SQLModel):
