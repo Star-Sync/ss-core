@@ -523,7 +523,7 @@ class RequestService:
             aos=request.aos if isinstance(request, ContactRequest) else None,
             rf_on=request.rf_on if isinstance(request, ContactRequest) else None,
             rf_off=request.rf_off if isinstance(request, ContactRequest) else None,
-            los=request.rf_off if isinstance(request, ContactRequest) else None,
+            los=request.los if isinstance(request, ContactRequest) else None,
             orbit=request.orbit if isinstance(request, ContactRequest) else None,
         )
 
