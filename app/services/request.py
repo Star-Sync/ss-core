@@ -10,13 +10,14 @@ from sqlmodel import select, Session
 from app.models.request import GeneralContactResponseModel
 from app.services.ground_station import GroundStationService
 from app.services.satellite import SatelliteService
-from ..entities.Satellite import Satellite
-from ..entities.GroundStation import GroundStation
-from ..entities.Request import RFRequest, ContactRequest
-from ..models.request import ContactRequestModel, RFTimeRequestModel
+from app.entities.Satellite import Satellite
+from app.entities.GroundStation import GroundStation
+from app.entities.Request import RFRequest, ContactRequest
+from app.models.request import ContactRequestModel, RFTimeRequestModel
 import uuid
 import logging
 from uuid import UUID
+from sqlalchemy.exc import SQLAlchemyError
 
 
 logger = logging.getLogger(__name__)
@@ -286,66 +287,14 @@ class RequestService:
 
     # crud requests
     @staticmethod
-    def get_request(db: Session, request_id: uuid.UUID) -> Request | None:
-        rf_request = db.exec(
-            select(RFRequest).where(RFRequest.id == request_id)
-        ).first()
-        if rf_request is None:
-            c_request = db.exec(
-                select(ContactRequest).where(ContactRequest.id == request_id)
-            ).first()
-        else:
-            return rf_request
-        if c_request is None:
-            logger.error(f"Request with ID {request_id} not found")
-        else:
-            return c_request
-        return None
-
-    @staticmethod
     def get_rf_time_request(db: Session, request_id: UUID) -> RFRequest | None:
         return db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
 
     @staticmethod
-    def get_contact_request(
-        db: Session, request_id: UUID
-    ) -> ContactRequestModel | None:
-        contact_request = db.exec(
+    def get_contact_request(db: Session, request_id: UUID) -> ContactRequest | None:
+        return db.exec(
             select(ContactRequest).where(ContactRequest.id == request_id)
         ).first()
-        if contact_request is None:
-            return None
-
-        # Get ground station if available, but don't fail if not found
-        gs = None
-        if contact_request.ground_station_id is not None:
-            gs = GroundStationService.get_ground_station(
-                db, contact_request.ground_station_id
-            )
-            if gs is None:
-                logger.warning(
-                    f"Ground station with ID {contact_request.ground_station_id} not found"
-                )
-                # Use a default name if ground station not found
-                gs_name = "Unknown Station"
-            else:
-                gs_name = gs.name
-        else:
-            gs_name = "N/A"
-
-        return ContactRequestModel(
-            missionName=contact_request.mission,
-            satelliteId=contact_request.satellite_id,
-            location=gs_name,
-            orbit=contact_request.orbit,
-            uplink=contact_request.uplink,
-            telemetry=contact_request.telemetry,
-            science=contact_request.science,
-            aosTime=contact_request.aos,
-            rfOnTime=contact_request.rf_on,
-            rfOffTime=contact_request.rf_off,
-            losTime=contact_request.los,
-        )
 
     @staticmethod
     def create_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
@@ -372,11 +321,11 @@ class RequestService:
                 satellite_id=request.satelliteId,
                 start_time=request.startTime,
                 end_time=request.endTime,
-                uplink_time_requested=int(request.uplinkTime),
-                downlink_time_requested=int(request.downlinkTime),
-                science_time_requested=int(request.scienceTime),
+                uplink_time_requested=request.uplinkTime,
+                downlink_time_requested=request.downlinkTime,
+                science_time_requested=request.scienceTime,
                 min_passes=request.minimumNumberOfPasses or 1,
-                priority=1,  # Default priority
+                priority=1,
                 ground_station_id=None,  # Will be set by the scheduler
                 contact_id=None,  # Will be set when scheduled
                 scheduled=False,
@@ -394,8 +343,11 @@ class RequestService:
             db.commit()
             db.refresh(rf_request)
             return rf_request
-        except Exception as e:
+        except SQLAlchemyError as e:
             db.rollback()
+            logger.error(f"Error creating RF request: {str(e)}")
+            raise
+        except Exception as e:
             logger.error(f"Error creating RF request: {str(e)}")
             raise
 
@@ -418,7 +370,7 @@ class RequestService:
                 satellite_id=request.satelliteId,
                 start_time=request.aosTime,  # Use AOS time as start time
                 end_time=request.losTime,  # Use LOS time as end time
-                ground_station_id=None,  # Will be set by the scheduler
+                ground_station_id=request.station_id,
                 orbit=request.orbit,
                 uplink=request.uplink,
                 telemetry=request.telemetry,
@@ -428,7 +380,7 @@ class RequestService:
                 rf_on=request.rfOnTime,
                 rf_off=request.rfOffTime,
                 duration=int((request.losTime - request.aosTime).total_seconds()),
-                priority=1,  # Default priority
+                priority=1,
                 contact_id=None,  # Will be set when scheduled
                 scheduled=False,
             )
@@ -436,57 +388,106 @@ class RequestService:
             db.commit()
             db.refresh(contact_request)
             return contact_request
-        except Exception as e:
+        except SQLAlchemyError as e:
             db.rollback()
+            logger.error(f"Error creating contact request: {str(e)}")
+            raise
+        except Exception as e:
             logger.error(f"Error creating contact request: {str(e)}")
             raise
 
     @staticmethod
     def update_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
-        rf_request = RFRequest(**request.model_dump())
-        db.add(rf_request)
-        db.commit()
-        db.refresh(rf_request)
-        return rf_request
+        try:
+            rf_request = RFRequest(**request.model_dump())
+            db.add(rf_request)
+            db.commit()
+            db.refresh(rf_request)
+            return rf_request
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error updating RF request: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error updating RF request: {str(e)}")
+            raise
 
     @staticmethod
     def delete_rf_time_request(db: Session, request_id: UUID) -> None:
-        request = db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
-        if request is None:
-            logger.error(f"RF Time Request with ID {request_id} not found")
+        try:
+            request = db.exec(
+                select(RFRequest).where(RFRequest.id == request_id)
+            ).first()
+            if request is None:
+                logger.error(f"RF Time Request with ID {request_id} not found")
+                raise ValueError(f"RF Time Request with ID {request_id} not found")
+            db.delete(request)
+            db.commit()
             return
-        db.delete(request)
-        db.commit()
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error deleting RF request: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting RF request: {str(e)}")
+            raise
 
     @staticmethod
     def delete_contact_request(db: Session, request_id: UUID) -> None:
-        request = db.exec(
-            select(ContactRequest).where(ContactRequest.id == request_id)
-        ).first()
-        if request is None:
-            logger.error(f"Contact Request with ID {request_id} not found")
+        try:
+            request = db.exec(
+                select(ContactRequest).where(ContactRequest.id == request_id)
+            ).first()
+            if request is None:
+                logger.error(f"Contact Request with ID {request_id} not found")
+                raise ValueError(f"Contact Request with ID {request_id} not found")
+            db.delete(request)
+            db.commit()
             return
-        db.delete(request)
-        db.commit()
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error deleting contact request: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting contact request: {str(e)}")
 
     @staticmethod
     def get_all_transformed_requests(db: Session) -> list[GeneralContactResponseModel]:
-        rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
-        c_requests: list[ContactRequest] = list(db.exec(select(ContactRequest)).all())
-        contacts: list[GeneralContactResponseModel] = []
-        all_requests: list[Request] = [*rf_requests, *c_requests]
-        for request in all_requests:
-            result = RequestService.transform_request_to_general(db, request)
-            if result is not None:
-                contacts.append(result)
-        return contacts
+        try:
+            rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
+            c_requests: list[ContactRequest] = list(
+                db.exec(select(ContactRequest)).all()
+            )
+            contacts: list[GeneralContactResponseModel] = []
+            all_requests: list[Request] = [*rf_requests, *c_requests]
+            for request in all_requests:
+                result = RequestService.transform_request_to_general(db, request)
+                if result is not None:
+                    contacts.append(result)
+            return contacts
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error getting all transformed requests: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting all transformed requests: {str(e)}")
+            raise
 
     @staticmethod
     def get_all_requests(db: Session) -> list[Request]:
-        rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
-        c_requests: list[ContactRequest] = list(db.exec(select(ContactRequest)).all())
-
-        return [*rf_requests, *c_requests]
+        try:
+            rf_requests: list[RFRequest] = list(db.exec(select(RFRequest)).all())
+            c_requests: list[ContactRequest] = list(
+                db.exec(select(ContactRequest)).all()
+            )
+            return [*rf_requests, *c_requests]
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error getting all requests: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting all requests: {str(e)}")
+            raise
 
     @staticmethod
     def transform_request_to_general(
@@ -513,7 +514,9 @@ class RequestService:
             id=request.id,
             mission=request.mission,
             satellite_name=sat.name,
-            station=gs.name if gs is not None else "N/A",
+            station_id=(
+                -1 if request.ground_station_id is None else request.ground_station_id
+            ),
             uplink=request.uplink if isinstance(request, ContactRequest) else 0,
             telemetry=(request.telemetry if isinstance(request, ContactRequest) else 0),
             science=request.science if isinstance(request, ContactRequest) else 0,
@@ -528,39 +531,23 @@ class RequestService:
         )
 
     @staticmethod
-    def transform_contact_to_general(
-        db: Session,
-        contacts: list[Contact],
-    ) -> list[GeneralContactResponseModel]:
-        results: list[GeneralContactResponseModel] = []
-        for contact in contacts:
-            request = RequestService.get_request(db, contact.request_id)
-            if request is None:
-                logger.error(f"Request with ID {contact.request_id} not found")
-                continue
-
-            result = RequestService.transform_request_to_general(db, request)
-            if result is not None:
-                # Override the times with contact slot times
-                result.startTime = contact.slot.start_time
-                result.endTime = contact.slot.end_time
-                result.duration = (
-                    contact.slot.end_time - contact.slot.start_time
-                ).total_seconds()
-                results.append(result)
-
-        return results
-
-    @staticmethod
     def get_bookings(db: Session) -> list[Contact]:
         # get all requests and schedule them
-        requests = RequestService.get_all_requests(db)
-        contacts = schedule_with_slots(
-            requests,
-            list(GroundStationService.get_ground_stations(db)),
-        )
-        # Transform contacts to GeneralContactResponseModel
-        return contacts
+        try:
+            requests = RequestService.get_all_requests(db)
+            contacts = schedule_with_slots(
+                requests,
+                list(GroundStationService.get_ground_stations(db)),
+            )
+            # Transform contacts to GeneralContactResponseModel
+            return contacts
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error getting bookings: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Error getting bookings: {str(e)}")
+            raise
 
     @staticmethod
     def sample(
