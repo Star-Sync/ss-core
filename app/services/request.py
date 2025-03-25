@@ -18,7 +18,7 @@ import uuid
 import logging
 from uuid import UUID
 from sqlalchemy.exc import SQLAlchemyError
-
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -291,32 +291,84 @@ class RequestService:
     # crud requests
     @staticmethod
     def get_rf_time_request(db: Session, request_id: UUID) -> RFRequest | None:
-        return db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
+        try:
+            req = db.exec(select(RFRequest).where(RFRequest.id == request_id)).first()
+            if req is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"RF Time Request with ID {request_id} not found",
+                )
+            return req
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error getting RF time request: {str(e)}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while getting RF time request: {str(e)}",
+            )
+        except Exception as e:
+            logger.error(f"Error getting RF time request: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error getting RF time request: {str(e)}",
+            )
 
     @staticmethod
     def get_contact_request(db: Session, request_id: UUID) -> ContactRequest | None:
-        return db.exec(
-            select(ContactRequest).where(ContactRequest.id == request_id)
-        ).first()
+        try:
+            req = db.exec(
+                select(ContactRequest).where(ContactRequest.id == request_id)
+            ).first()
+            if req is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Contact Request with ID {request_id} not found",
+                )
+            return req
+        except SQLAlchemyError as e:
+            db.rollback()
+            logger.error(f"Error getting contact request: {str(e)}")
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while getting contact request: {str(e)}",
+            )
+        except Exception as e:
+            logger.error(f"Error getting contact request: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error getting contact request: {str(e)}",
+            )
 
     @staticmethod
     def create_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
         try:
             # Validate request data
             if not request.missionName:
-                raise ValueError("Mission name cannot be empty")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Mission name cannot be empty",
+                )
             if request.startTime >= request.endTime:
-                raise ValueError("Start time must be before end time")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Start time must be before end time",
+                )
             if (
                 request.uplinkTime < 0
                 or request.downlinkTime < 0
                 or request.scienceTime < 0
             ):
-                raise ValueError("Time requests cannot be negative")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Time requests cannot be negative",
+                )
             if request.minimumNumberOfPasses is None:
                 request.minimumNumberOfPasses = 1
             if request.minimumNumberOfPasses < 1:
-                raise ValueError("Minimum number of passes must be at least 1")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Minimum number of passes must be at least 1",
+                )
 
             # Map the request model fields to entity fields
             rf_request = RFRequest(
@@ -349,10 +401,16 @@ class RequestService:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error creating RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while fetching users: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error creating RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating RF request: {str(e)}",
+            )
 
     @staticmethod
     def create_contact_request(
@@ -361,11 +419,20 @@ class RequestService:
         try:
             # Validate request data
             if not request.missionName:
-                raise ValueError("Mission name cannot be empty")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Mission name cannot be empty",
+                )
             if request.aosTime >= request.losTime:
-                raise ValueError("AOS time must be before LOS time")
+                raise HTTPException(
+                    status_code=400,
+                    detail="AOS time must be before LOS time",
+                )
             if request.rfOnTime >= request.rfOffTime:
-                raise ValueError("RF on time must be before RF off time")
+                raise HTTPException(
+                    status_code=400,
+                    detail="RF on time must be before RF off time",
+                )
 
             # Map the request model fields to entity fields
             contact_request = ContactRequest(
@@ -394,10 +461,16 @@ class RequestService:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error creating contact request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while creating contact request: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error creating contact request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating contact request: {str(e)}",
+            )
 
     @staticmethod
     def update_rf_request(db: Session, request: RFTimeRequestModel) -> RFRequest:
@@ -410,10 +483,16 @@ class RequestService:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error updating RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while updating RF request: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error updating RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error updating RF request: {str(e)}",
+            )
 
     @staticmethod
     def delete_rf_time_request(db: Session, request_id: UUID) -> None:
@@ -423,7 +502,10 @@ class RequestService:
             ).first()
             if request is None:
                 logger.error(f"RF Time Request with ID {request_id} not found")
-                raise ValueError(f"RF Time Request with ID {request_id} not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"RF Time Request with ID {request_id} not found",
+                )
             db.delete(request)
             db.commit()
             return
@@ -433,7 +515,10 @@ class RequestService:
             raise
         except Exception as e:
             logger.error(f"Error deleting RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error deleting RF request: {str(e)}",
+            )
 
     @staticmethod
     def delete_contact_request(db: Session, request_id: UUID) -> None:
@@ -443,16 +528,22 @@ class RequestService:
             ).first()
             if request is None:
                 logger.error(f"Contact Request with ID {request_id} not found")
-                raise ValueError(f"Contact Request with ID {request_id} not found")
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Contact Request with ID {request_id} not found",
+                )
             db.delete(request)
             db.commit()
             return
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error deleting contact request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while deleting contact request: {str(e)}",
+            )
         except Exception as e:
-            logger.error(f"Error deleting contact request: {str(e)}")
+            raise e
 
     @staticmethod
     def get_all_transformed_requests(db: Session) -> list[GeneralContactResponseModel]:
@@ -487,10 +578,16 @@ class RequestService:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error getting all requests: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while getting all requests: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error getting all requests: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error getting all requests: {str(e)}",
+            )
 
     @staticmethod
     def transform_request_to_general(
@@ -505,12 +602,18 @@ class RequestService:
                 logger.error(
                     f"Ground Station with ID {request.ground_station_id} not found"
                 )
-                return None
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Ground Station with ID {request.ground_station_id} not found",
+                )
 
         sat = SatelliteService.get_satellite(db, request.satellite_id)
         if sat is None:
             logger.error(f"Satellite with ID {request.satellite_id} not found")
-            return None
+            raise HTTPException(
+                status_code=404,
+                detail=f"Satellite with ID {request.satellite_id} not found",
+            )
 
         return GeneralContactResponseModel(
             requestType="RFTime" if isinstance(request, RFRequest) else "Contact",
@@ -547,10 +650,16 @@ class RequestService:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error getting bookings: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while getting bookings: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error getting bookings: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error getting bookings: {str(e)}",
+            )
 
     @staticmethod
     def sample(
@@ -560,7 +669,10 @@ class RequestService:
         stations = GroundStationService.get_ground_stations(db)
         if len(sats) < 2 or len(stations) < 2:
             logger.error("Need at least 2 satellites and 2 ground stations to demo")
-            raise ValueError("Need at least 2 satellites and 2 ground stations to demo")
+            raise HTTPException(
+                status_code=400,
+                detail="Need at least 2 satellites and 2 ground stations to demo",
+            )
         requests: list[Request] = [
             RFRequest(
                 mission="Mission 1",

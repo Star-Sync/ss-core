@@ -61,7 +61,7 @@ def get_bookings(
     "/sample",
     summary="runs a sample demo of the service",
     response_model=List[GeneralContactResponseModel],
-    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def sample(
     db: Session = Depends(get_db),
@@ -69,9 +69,8 @@ def sample(
     try:
         future_reqs = RequestService.sample(db)
         return future_reqs
-    except ValueError as e:
-        logger.error(f"Validation error in sample: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error in sample: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -87,12 +86,9 @@ def sample(
 def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
     try:
         created_request = RequestService.create_rf_request(db, request)
-        if created_request is None:
-            raise HTTPException(status_code=400, detail="Failed to create RF request")
-        return request
-    except ValueError as e:
-        logger.error(f"Validation error creating RF request: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        return created_request
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error creating RF request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -108,14 +104,9 @@ def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
 def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
     try:
         resp = RequestService.create_contact_request(db, request)
-        if resp is None:
-            raise HTTPException(
-                status_code=400, detail="Failed to create contact request"
-            )
         return resp
-    except ValueError as e:
-        logger.error(f"Validation error creating contact request: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException as e:
+        raise e
     except Exception as e:
         logger.error(f"Error creating contact request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -130,11 +121,6 @@ def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
 def get_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
     try:
         request = RequestService.get_rf_time_request(db, request_id)
-        if request is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"RF Time Request with ID {request_id} not found",
-            )
         return request
     except HTTPException:
         raise
@@ -150,12 +136,6 @@ def get_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
 )
 def delete_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
     try:
-        request = RequestService.get_rf_time_request(db, request_id)
-        if request is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"RF Time Request with ID {request_id} not found",
-            )
         RequestService.delete_rf_time_request(db, request_id)
         return {"message": "RF Time Request deleted successfully"}
     except HTTPException:
@@ -173,13 +153,7 @@ def delete_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
 )
 def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
     try:
-        request = RequestService.get_contact_request(db, request_id)
-        if request is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Contact Request with ID {request_id} not found",
-            )
-        return request
+        return RequestService.get_contact_request(db, request_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -194,12 +168,6 @@ def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
 )
 def delete_contact_request(request_id: UUID, db: Session = Depends(get_db)):
     try:
-        request = RequestService.get_contact_request(db, request_id)
-        if request is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Contact Request with ID {request_id} not found",
-            )
         RequestService.delete_contact_request(db, request_id)
         return {"message": "Contact Request deleted successfully"}
     except HTTPException:
