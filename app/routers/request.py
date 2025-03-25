@@ -8,11 +8,13 @@ from app.models.request import (
     RFTimeRequestModel,
     ContactRequestModel,
 )
-from ..services.request import (
-    RequestService,
-    Contact,
-)  # we should be importing Contact from somwhere better
+from app.entities.Request import (
+    ContactRequest,
+    RFRequest,
+)
+from app.services.request import RequestService, Contact
 import logging
+from app.routers.error import getErrorResponses
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +29,7 @@ router = APIRouter(
     "/",
     summary="Get all requests",
     response_model=List[GeneralContactResponseModel],
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_requests(
     db: Session = Depends(get_db),
@@ -42,26 +45,35 @@ def get_requests(
     "/bookings",
     summary="Get all bookings",
     response_model=List[Contact],
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_bookings(
     db: Session = Depends(get_db),
 ):
-    return RequestService.get_bookings(db)
+    try:
+        return RequestService.get_bookings(db)
+    except Exception as e:
+        logger.error(f"Error getting bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
     "/sample",
     summary="runs a sample demo of the service",
     response_model=List[GeneralContactResponseModel],
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def sample(
     db: Session = Depends(get_db),
 ):
     try:
         future_reqs = RequestService.sample(db)
-
         return future_reqs
+    except ValueError as e:
+        logger.error(f"Validation error in sample: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.error(f"Error in sample: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -70,6 +82,7 @@ def sample(
     summary="Ground Station RF Time Request",
     response_model=RFTimeRequestModel,
     response_description="Request body",
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
     try:
@@ -88,8 +101,9 @@ def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
 @router.post(
     "/contact",
     summary="Ground Station Contact Request",
-    response_model=ContactRequestModel,
+    response_model=ContactRequest,
     response_description="Simple success string for now",
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
     try:
@@ -99,71 +113,97 @@ def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
                 status_code=400, detail="Failed to create contact request"
             )
         return resp
+    except ValueError as e:
+        logger.error(f"Validation error creating contact request: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.error(f"Error creating contact request: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
     "/rf-time/{request_id}",
     summary="Get RF Time Request by ID",
-    response_model=RFTimeRequestModel,
+    response_model=RFRequest,
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
-    request = RequestService.get_rf_time_request(db, request_id)
-    if request is None:
-        raise HTTPException(
-            status_code=404, detail=f"RF Time Request with ID {request_id} not found"
-        )
-    # Convert entity to model
-    return RFTimeRequestModel(
-        missionName=request.mission,
-        satelliteId=request.satellite_id,
-        startTime=request.start_time,
-        endTime=request.end_time,
-        uplinkTime=float(request.uplink_time_requested),
-        downlinkTime=float(request.downlink_time_requested),
-        scienceTime=float(request.science_time_requested),
-        minimumNumberOfPasses=request.min_passes,
-    )
+    try:
+        request = RequestService.get_rf_time_request(db, request_id)
+        if request is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RF Time Request with ID {request_id} not found",
+            )
+        return request
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting RF time request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete(
     "/rf-time/{request_id}",
     summary="Delete RF Time Request by ID",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def delete_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
-    request = RequestService.get_rf_time_request(db, request_id)
-    if request is None:
-        raise HTTPException(
-            status_code=404, detail=f"RF Time Request with ID {request_id} not found"
-        )
-    RequestService.delete_rf_time_request(db, request_id)
-    return {"message": "RF Time Request deleted successfully"}
+    try:
+        request = RequestService.get_rf_time_request(db, request_id)
+        if request is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"RF Time Request with ID {request_id} not found",
+            )
+        RequestService.delete_rf_time_request(db, request_id)
+        return {"message": "RF Time Request deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting RF time request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get(
     "/contact/{request_id}",
     summary="Get Contact Request by ID",
     response_model=ContactRequestModel,
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
-    request = RequestService.get_contact_request(db, request_id)
-    if request is None:
-        raise HTTPException(
-            status_code=404, detail=f"Contact Request with ID {request_id} not found"
-        )
-    return request
+    try:
+        request = RequestService.get_contact_request(db, request_id)
+        if request is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Contact Request with ID {request_id} not found",
+            )
+        return request
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting contact request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete(
     "/contact/{request_id}",
     summary="Delete Contact Request by ID",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def delete_contact_request(request_id: UUID, db: Session = Depends(get_db)):
-    request = RequestService.get_contact_request(db, request_id)
-    if request is None:
-        raise HTTPException(
-            status_code=404, detail=f"Contact Request with ID {request_id} not found"
-        )
-    RequestService.delete_contact_request(db, request_id)
-    return {"message": "Contact Request deleted successfully"}
+    try:
+        request = RequestService.get_contact_request(db, request_id)
+        if request is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Contact Request with ID {request_id} not found",
+            )
+        RequestService.delete_contact_request(db, request_id)
+        return {"message": "Contact Request deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting contact request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
