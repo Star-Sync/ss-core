@@ -205,6 +205,7 @@ def sample_satellite(db: Session):
 @pytest.fixture
 def sample_ground_station(db: Session):
     station = GroundStation(
+        id=1,
         name="Inuvik",
         lat=68.3195,
         lon=-133.549,
@@ -228,9 +229,9 @@ def sample_rf_request_model(sample_satellite):
         satelliteId=sample_satellite.id,
         startTime=current_time + timedelta(hours=1),
         endTime=current_time + timedelta(hours=2),
-        uplinkTime=600.0,
-        downlinkTime=600.0,
-        scienceTime=300.0,
+        uplinkTime=600,
+        downlinkTime=600,
+        scienceTime=300,
         minimumNumberOfPasses=2,
     )
 
@@ -243,7 +244,7 @@ def sample_contact_request_model(sample_satellite):
     return ContactRequestModel(
         missionName="Test Mission",
         satelliteId=sample_satellite.id,
-        location="Inuvik",
+        station_id=1,
         orbit=0,
         uplink=True,
         telemetry=True,
@@ -293,7 +294,7 @@ def test_create_contact_request(db: Session, sample_contact_request_model):
     assert contact_request.rf_on == sample_contact_request_model.rfOnTime
     assert contact_request.rf_off == sample_contact_request_model.rfOffTime
     assert not contact_request.scheduled
-    assert contact_request.ground_station_id is None
+    assert contact_request.ground_station_id == sample_contact_request_model.station_id
 
 
 def test_get_rf_time_request(db: Session, sample_rf_request_model):
@@ -404,9 +405,9 @@ def test_invalid_request_data(db: Session, sample_satellite):
         satelliteId=sample_satellite.id,
         startTime=current_time - timedelta(hours=2),  # End time before start time
         endTime=current_time - timedelta(hours=1),
-        uplinkTime=-1.0,  # Negative time
-        downlinkTime=0.0,
-        scienceTime=0.0,
+        uplinkTime=-1,  # Negative time
+        downlinkTime=0,
+        scienceTime=0,
         minimumNumberOfPasses=0,  # Invalid number of passes
     )
 
