@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import os
 import secrets
 from pydantic import BaseModel
-from ..models.auth import User, UserCreate
+from ..entities.User import User, UserCreate
 from app.services.db import get_db
 
 # Generate random secret key
