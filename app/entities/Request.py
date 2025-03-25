@@ -85,9 +85,7 @@ class ContactRequest(SQLModel, table=True):  # type: ignore
     contact_id: Optional[UUID]
     scheduled: bool = Field(default=False)
     priority: int  # Higher is better
-    ground_station_id: Optional[int] = Field(
-        default=None, foreign_key="ground_stations.id"
-    )
+    ground_station_id: int = Field(foreign_key="ground_stations.id")
     orbit: int
     uplink: bool
     telemetry: bool
