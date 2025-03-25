@@ -10,6 +10,7 @@ from app.services.request import RequestService
 from app.models.request import RFTimeRequestModel, ContactRequestModel
 from app.entities.Request import RFRequest, ContactRequest
 from app.entities.Satellite import Satellite
+from fastapi import HTTPException
 
 
 @pytest.fixture(name="db")
@@ -331,8 +332,12 @@ def test_delete_rf_time_request(db: Session, sample_rf_request_model):
     RequestService.delete_rf_time_request(db, created_request.id)
 
     # Verify the request was deleted
-    retrieved_request = RequestService.get_rf_time_request(db, created_request.id)
-    assert retrieved_request is None
+    with pytest.raises(HTTPException) as exc_info:
+        RequestService.get_rf_time_request(db, created_request.id)
+    assert exc_info.value.status_code == 404
+    assert f"RF Time Request with ID {created_request.id} not found" in str(
+        exc_info.value.detail
+    )
 
 
 def test_delete_contact_request(db: Session, sample_contact_request_model):
@@ -345,8 +350,12 @@ def test_delete_contact_request(db: Session, sample_contact_request_model):
     RequestService.delete_contact_request(db, created_request.id)
 
     # Verify the request was deleted
-    retrieved_request = RequestService.get_contact_request(db, created_request.id)
-    assert retrieved_request is None
+    with pytest.raises(HTTPException) as exc_info:
+        RequestService.get_contact_request(db, created_request.id)
+    assert exc_info.value.status_code == 404
+    assert f"Contact Request with ID {created_request.id} not found" in str(
+        exc_info.value.detail
+    )
 
 
 def test_get_all_requests(
@@ -389,28 +398,37 @@ def test_transform_request_to_general(
 def test_nonexistent_request(db: Session):
     # Try to get a request with a non-existent ID
     nonexistent_id = uuid4()
-    rf_request = RequestService.get_rf_time_request(db, nonexistent_id)
-    contact_request = RequestService.get_contact_request(db, nonexistent_id)
+    with pytest.raises(HTTPException) as exc_info:
+        RequestService.get_rf_time_request(db, nonexistent_id)
+    assert exc_info.value.status_code == 404
+    assert f"RF Time Request with ID {nonexistent_id} not found" in str(
+        exc_info.value.detail
+    )
 
-    # Verify both are None
-    assert rf_request is None
-    assert contact_request is None
+    with pytest.raises(HTTPException) as exc_info:
+        RequestService.get_contact_request(db, nonexistent_id)
+    assert exc_info.value.status_code == 404
+    assert f"Contact Request with ID {nonexistent_id} not found" in str(
+        exc_info.value.detail
+    )
 
 
 def test_invalid_request_data(db: Session, sample_satellite):
-    current_time = datetime.now(timezone.utc)
-    # Create an RF request model with invalid data
-    invalid_rf_model = RFTimeRequestModel(
-        missionName="",  # Empty mission name
+    # Create an invalid RF request with empty mission name
+    current_time = datetime.now()
+    invalid_request = RFTimeRequestModel(
+        missionName="",  # Invalid: empty mission name
         satelliteId=sample_satellite.id,
-        startTime=current_time - timedelta(hours=2),  # End time before start time
-        endTime=current_time - timedelta(hours=1),
-        uplinkTime=-1,  # Negative time
-        downlinkTime=0,
-        scienceTime=0,
-        minimumNumberOfPasses=0,  # Invalid number of passes
+        startTime=current_time + timedelta(hours=1),
+        endTime=current_time + timedelta(hours=2),
+        uplinkTime=600,
+        downlinkTime=600,
+        scienceTime=300,
+        minimumNumberOfPasses=2,
     )
 
-    # Verify creation fails with ValueError
-    with pytest.raises(ValueError):
-        RequestService.create_rf_request(db, invalid_rf_model)
+    # Verify that creating the request raises a 400 error
+    with pytest.raises(HTTPException) as exc_info:
+        RequestService.create_rf_request(db, invalid_request)
+    assert exc_info.value.status_code == 400
+    assert "Mission name cannot be empty" in str(exc_info.value.detail)

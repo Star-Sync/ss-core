@@ -299,6 +299,8 @@ class RequestService:
                     detail=f"RF Time Request with ID {request_id} not found",
                 )
             return req
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error getting RF time request: {str(e)}")
@@ -325,6 +327,8 @@ class RequestService:
                     detail=f"Contact Request with ID {request_id} not found",
                 )
             return req
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error getting contact request: {str(e)}")
@@ -398,12 +402,14 @@ class RequestService:
             db.commit()
             db.refresh(rf_request)
             return rf_request
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error creating RF request: {str(e)}")
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while fetching users: {str(e)}",
+                detail=f"Database error while creating RF request: {str(e)}",
             )
         except Exception as e:
             logger.error(f"Error creating RF request: {str(e)}")
@@ -501,18 +507,22 @@ class RequestService:
                 select(RFRequest).where(RFRequest.id == request_id)
             ).first()
             if request is None:
-                logger.error(f"RF Time Request with ID {request_id} not found")
                 raise HTTPException(
                     status_code=404,
                     detail=f"RF Time Request with ID {request_id} not found",
                 )
             db.delete(request)
             db.commit()
-            return
+            return None
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error deleting RF request: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=503,
+                detail=f"Database error while deleting RF request: {str(e)}",
+            )
         except Exception as e:
             logger.error(f"Error deleting RF request: {str(e)}")
             raise HTTPException(
@@ -527,14 +537,15 @@ class RequestService:
                 select(ContactRequest).where(ContactRequest.id == request_id)
             ).first()
             if request is None:
-                logger.error(f"Contact Request with ID {request_id} not found")
                 raise HTTPException(
                     status_code=404,
                     detail=f"Contact Request with ID {request_id} not found",
                 )
             db.delete(request)
             db.commit()
-            return
+            return None
+        except HTTPException:
+            raise
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error deleting contact request: {str(e)}")
@@ -543,7 +554,11 @@ class RequestService:
                 detail=f"Database error while deleting contact request: {str(e)}",
             )
         except Exception as e:
-            raise e
+            logger.error(f"Error deleting contact request: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error deleting contact request: {str(e)}",
+            )
 
     @staticmethod
     def get_all_transformed_requests(db: Session) -> list[GeneralContactResponseModel]:
