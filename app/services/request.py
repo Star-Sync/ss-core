@@ -34,6 +34,7 @@ class Slot:
 @dataclass
 class Contact:
     slot: Slot
+    gs_id: int
     request_id: uuid.UUID
     id: uuid.UUID = uuid.uuid4()
 
@@ -115,6 +116,7 @@ def schedule_with_slots(
                 contact = Contact(
                     slot=Slot(start_time=start_time, end_time=end_time),
                     request_id=request.id,
+                    gs_id=request.ground_station_id,
                 )
 
                 slots[station_id][(start, start + slot_duration)] = contact
@@ -156,6 +158,7 @@ def schedule_with_slots(
                                 start_time=start_time,
                                 end_time=end_time,
                             ),
+                            gs_id=gs.id,
                         )
 
                         slots[station_name][(start, end)] = contact
