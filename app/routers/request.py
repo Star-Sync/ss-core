@@ -79,7 +79,7 @@ def sample(
 @router.post(
     "/rf-time",
     summary="Ground Station RF Time Request",
-    response_model=RFTimeRequestModel,
+    response_model=RFRequest,
     response_description="Request body",
     responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
