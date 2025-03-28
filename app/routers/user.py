@@ -15,7 +15,7 @@ router = APIRouter(prefix="/users", tags=["User Management"])
     "/{user_id}",
     summary="Update user",
     response_model=UserModel,
-    response_description="User {user_id} successully updated",
+    response_description="User successfully updated",
     responses={**getErrorResponses(403), **getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def update_user(

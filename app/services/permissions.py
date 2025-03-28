@@ -53,3 +53,7 @@ def check_mission_access(user: UserModel, resource_mission: str):
 
 def has_system_privileges(user: UserModel) -> bool:
     return user.role in ["SYS_ADMIN", "SYS_USER"]
+
+
+def is_sys_admin(user: UserModel) -> bool:
+    return user.role == "SYS_ADMIN"
