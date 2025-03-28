@@ -1,28 +1,22 @@
-#  type: ignore
-# ^ remove the type: ignore from the class definition when
-#  we have the correct basic types
-
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from app.services.db import get_db
 from sqlmodel import Session
-
+from uuid import UUID
 from app.models.request import (
     GeneralContactResponseModel,
     RFTimeRequestModel,
     ContactRequestModel,
 )
+from app.entities.Request import (
+    ContactRequest,
+    RFRequest,
+)
+from app.services.request import RequestService, Contact
+import logging
+from app.routers.error import getErrorResponses
 
-# from ..services.request import (
-#     get_db_contact_times,
-#     schedule_contact,
-#     schedule_rf,
-#     map_to_response_model,
-# )
-
-from ..services.request import RequestService
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/request",
@@ -33,54 +27,151 @@ router = APIRouter(
 
 @router.get(
     "/",
+    summary="Get all requests",
+    response_model=List[GeneralContactResponseModel],
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def get_requests(
+    db: Session = Depends(get_db),
+):
+    try:
+        return RequestService.get_all_transformed_requests(db)
+    except Exception as e:
+        logger.error(f"Error getting all requests: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/bookings",
+    summary="Get all bookings",
+    response_model=List[Contact],
+    responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def get_bookings(
+    db: Session = Depends(get_db),
+):
+    try:
+        return RequestService.get_bookings(db)
+    except Exception as e:
+        logger.error(f"Error getting bookings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/sample",
     summary="runs a sample demo of the service",
     response_model=List[GeneralContactResponseModel],
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def sample(
     db: Session = Depends(get_db),
 ):
     try:
-        # return RequestService.sample(db)
-        future_reqs = RequestService.transform_contact_to_general(
-            RequestService.sample(db)
-        )
-
+        future_reqs = RequestService.sample(db)
         return future_reqs
+    except HTTPException as e:
+        raise e
     except Exception as e:
+        logger.error(f"Error in sample: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get(
-#     "/",
-#     summary="Get all the scheduled requests",
-#     response_model=List[GeneralContactResponseModel],
-#     response_description="Scheduled requests",
-# )
-# def bookings():
-#     try:
-#         future_reqs = [map_to_response_model(booking) for c in get_db_contact_times()]
-#         return future_reqs
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
+@router.post(
+    "/rf-time",
+    summary="Ground Station RF Time Request",
+    response_model=RFRequest,
+    response_description="Request body",
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def rf_time(request: RFTimeRequestModel, db: Session = Depends(get_db)):
+    try:
+        created_request = RequestService.create_rf_request(db, request)
+        return created_request
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error creating RF request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.post(
-#     "/rf-time",
-#     summary="Ground Station RF Time Request",
-#     response_model=RFTimeRequestModel,
-#     response_description="Request body",
-# )
-# def rf_time(request: RFTimeRequestModel):
-#     schedule_rf(request)
-#     return request
+@router.post(
+    "/contact",
+    summary="Ground Station Contact Request",
+    response_model=ContactRequest,
+    response_description="Simple success string for now",
+    responses={**getErrorResponses(400), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def contact(request: ContactRequestModel, db: Session = Depends(get_db)):
+    try:
+        resp = RequestService.create_contact_request(db, request)
+        return resp
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Error creating contact request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.post(
-#     "/contact",
-#     summary="Ground Station Contact Request",
-#     response_model=ContactRequestModel,
-#     response_description="Simple success string for now",
-# )
-# def contact(request: ContactRequestModel):
-#     schedule_contact(request)
-#     return request
+@router.get(
+    "/rf-time/{request_id}",
+    summary="Get RF Time Request by ID",
+    response_model=RFRequest,
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def get_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
+    try:
+        request = RequestService.get_rf_time_request(db, request_id)
+        return request
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting RF time request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete(
+    "/rf-time/{request_id}",
+    summary="Delete RF Time Request by ID",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def delete_rf_time_request(request_id: UUID, db: Session = Depends(get_db)):
+    try:
+        RequestService.delete_rf_time_request(db, request_id)
+        return {"message": "RF Time Request deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting RF time request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(
+    "/contact/{request_id}",
+    summary="Get Contact Request by ID",
+    response_model=ContactRequestModel,
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def get_contact_request(request_id: UUID, db: Session = Depends(get_db)):
+    try:
+        return RequestService.get_contact_request(db, request_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting contact request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete(
+    "/contact/{request_id}",
+    summary="Delete Contact Request by ID",
+    responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
+)
+def delete_contact_request(request_id: UUID, db: Session = Depends(get_db)):
+    try:
+        RequestService.delete_contact_request(db, request_id)
+        return {"message": "Contact Request deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting contact request: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

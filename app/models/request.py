@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel, Field
+from uuid import UUID
 
 
 class RFTimeRequestModel(BaseModel):
@@ -9,8 +10,9 @@ class RFTimeRequestModel(BaseModel):
         description="Name of the mission making the request", examples=["SCISAT"]
     )
     # will have to rename the field to satelliteName and supply the actual name of the satellite
-    satelliteId: str = Field(
-        description="Name of the satellite the request is for", examples=["1"]
+    satelliteId: UUID = Field(
+        description="Name of the satellite the request is for",
+        examples=["228f21de-116c-493a-9982-8ee24d9f57bf"],
     )
     # the example times would probably have to be modified eventually
     # this is just to prevent confusion when trying out api endpoints through swagger
@@ -22,15 +24,15 @@ class RFTimeRequestModel(BaseModel):
         description="The end of the time window during which the requested time should be provided in",
         examples=[datetime.now() + timedelta(days=1, minutes=30)],
     )
-    uplinkTime: float = Field(
+    uplinkTime: int = Field(
         description="Time in seconds that the mission is requesting uplink support",
         examples=[600],
     )
-    downlinkTime: float = Field(
+    downlinkTime: int = Field(
         description="Time in seconds that the mission is requesting support for downlinking spacecraft telemetry",
         examples=[600],
     )
-    scienceTime: float = Field(
+    scienceTime: int = Field(
         description="Time in seconds that the mission is requesting support for downlinking science data",
         examples=[150],
     )
@@ -46,12 +48,11 @@ class ContactRequestModel(BaseModel):
         description="Name of the mission making the request", examples=["SCISAT"]
     )
     # will have to rename the field to satelliteName and supply the actual name of the satellite
-    satelliteId: str = Field(
-        description="Name of the satellite the request is for", examples=["1"]
+    satelliteId: UUID = Field(
+        description="Name of the satellite the request is for",
+        examples=["228f21de-116c-493a-9982-8ee24d9f57bf"],
     )
-    location: str = Field(
-        description="The station the request is for", examples=["Inuvik Northwest"]
-    )
+    station_id: int = Field(description="The station the request is for", examples=[1])
     orbit: int = Field(
         description="The orbit number of the satellite at the time of AOS",
         examples=[1234],
@@ -89,18 +90,20 @@ class GeneralContactResponseModel(BaseModel):
     This is a general response model for both RF time and contact requests.
     """
 
+    id: UUID = Field(
+        description="The ID of the request",
+        examples=["228f21de-116c-493a-9982-8ee24d9f57bf"],
+    )
     requestType: str = Field(
         description="Type of the request (either RF or Contact)", examples=["RFTime"]
     )
     mission: str = Field(
         description="Name of the mission making the request", examples=["SCISAT"]
     )
-    satellite: str = Field(
+    satellite_name: str = Field(
         description="Name of the satellite the request is for", examples=["SCISAT-1"]
     )
-    station: str = Field(
-        description="The station the request is for", examples=["Inuvik"]
-    )
+    station_id: int = Field(description="The station the request is for", examples=[1])
     orbit: Optional[int] = Field(
         description="The orbit number of the satellite at the time of AOS",
         examples=[1234],

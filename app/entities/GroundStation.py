@@ -1,7 +1,6 @@
 from skyfield.api import wgs84  # type: ignore
 from skyfield.toposlib import GeographicPosition  # type: ignore
 from sqlmodel import SQLModel, Field
-from typing import Optional
 
 
 class GroundStation(SQLModel, table=True):  # type: ignore
@@ -12,7 +11,7 @@ class GroundStation(SQLModel, table=True):  # type: ignore
     - there should be 2 values of mask parameter: Receive and Send; for now it's the same
     """
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: int = Field(primary_key=True, sa_column_kwargs={"autoincrement": True})
     name: str
     lat: float
     lon: float
@@ -22,29 +21,6 @@ class GroundStation(SQLModel, table=True):  # type: ignore
     downlink: float
     science: float
 
-    # Will most likely be removed soon
-    def __init__(
-        self,
-        id: Optional[int] = None,
-        name: str = "",
-        lat: float = 0,
-        lon: float = 0,
-        height: float = 0,
-        mask: int = 0,
-        uplink: float = 0,
-        downlink: float = 0,
-        science: float = 0,
-    ):
-        self.id = id
-        self.name = name
-        self.lat = lat
-        self.lon = lon
-        self.height = height
-        self.mask = mask
-        self.uplink = uplink
-        self.downlink = downlink
-        self.science = science
-
     def get_sf_geo_position(self) -> GeographicPosition:
         return wgs84.latlon(
             latitude_degrees=self.lat,
@@ -53,4 +29,4 @@ class GroundStation(SQLModel, table=True):  # type: ignore
         )
 
     def __repr__(self):
-        return f"GroundStation(name={self.name})"
+        return f"GroundStation(id={self.id}, name={self.name})"

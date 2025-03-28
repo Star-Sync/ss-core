@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from app.entities.Satellite import Satellite
 
 
-class RFRequest(SQLModel, table=True):
+class RFRequest(SQLModel, table=True):  # type: ignore
     """RF Request entity for database storage"""
 
     __tablename__ = "rf_request"  # type: ignore
@@ -35,10 +35,10 @@ class RFRequest(SQLModel, table=True):
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.time_remaining = (
-            self.uplink_time_requested
-            + self.downlink_time_requested
-            + self.science_time_requested
+        self.time_remaining = max(
+            self.uplink_time_requested,
+            self.downlink_time_requested,
+            self.science_time_requested,
         )
 
     # copying over from old RFTime class
@@ -71,7 +71,7 @@ class RFRequest(SQLModel, table=True):
     # ground_station: Optional["GroundStation"] = Relationship()
 
 
-class ContactRequest(SQLModel, table=True):
+class ContactRequest(SQLModel, table=True):  # type: ignore
     """Contact Request entity for database storage"""
 
     __tablename__ = "contact_request"  # type: ignore
@@ -85,17 +85,15 @@ class ContactRequest(SQLModel, table=True):
     contact_id: Optional[UUID]
     scheduled: bool = Field(default=False)
     priority: int  # Higher is better
-    ground_station_id: Optional[int] = Field(
-        default=None, foreign_key="ground_stations.id"
-    )
+    ground_station_id: int = Field(foreign_key="ground_stations.id")
     orbit: int
     uplink: bool
     telemetry: bool
     science: bool
-    aos: datetime | None
-    los: datetime | None
-    rf_on: datetime | None
-    rf_off: datetime | None
+    aos: datetime
+    los: datetime
+    rf_on: datetime
+    rf_off: datetime
     duration: int
 
     # satellite: Optional["Satellite"] = Relationship(back_populates="requests")
