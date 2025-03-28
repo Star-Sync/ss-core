@@ -4,6 +4,7 @@ from sqlmodel import select, Session
 from app.models.user import UserModel, UserUpdateModel
 from app.entities.User import User
 from app.services.auth import get_password_hash
+from app.services.permissions import is_sys_admin
 
 
 class UserService:
@@ -12,9 +13,7 @@ class UserService:
         db: Session, user_id: int, request: UserUpdateModel, current_user: UserModel
     ) -> User:
         try:
-            existing_user = UserService.get_user(
-                db, user_id, current_user
-            )  # already checks for admin rights, no need to check again
+            existing_user = UserService.get_user(db, user_id, current_user)
 
             update_data = request.model_dump(exclude_unset=True)
             for key, value in update_data.items():
@@ -43,7 +42,7 @@ class UserService:
     @staticmethod
     def get_users(db: Session, current_user: UserModel) -> list[User]:
         try:
-            if current_user.role != "admin":
+            if not is_sys_admin(current_user):
                 raise HTTPException(status_code=403, detail="Permission denied")
 
             statement = select(User)
@@ -67,7 +66,7 @@ class UserService:
     @staticmethod
     def get_user(db: Session, user_id: int, current_user: UserModel) -> User:
         try:
-            if current_user.role != "admin" and current_user.id != user_id:
+            if not is_sys_admin(current_user) and current_user.id != user_id:
                 raise HTTPException(status_code=403, detail="Permission denied")
 
             statement = select(User).where(User.id == user_id)

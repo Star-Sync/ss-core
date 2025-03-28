@@ -1,3 +1,4 @@
+import logging
 import uuid
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import HTTPException
@@ -7,16 +8,28 @@ from app.models.exclusion_cone import (
     ExclusionConeUpdateModel,
 )
 from app.entities.ExclusionCone import ExclusionCone
+from app.models.user import UserModel
 from app.services.ground_station import GroundStationService
+from app.services.permissions import (
+    Action,
+    check_action,
+    check_mission_access,
+    has_system_privileges,
+)
 from app.services.satellite import SatelliteService
+
+logger = logging.getLogger(__name__)
 
 
 class ExclusionConeService:
     @staticmethod
     def create_exclusion_cone(
-        db: Session, exclusion_cone: ExclusionConeCreateModel
+        db: Session, user: UserModel, exclusion_cone: ExclusionConeCreateModel
     ) -> ExclusionCone:
         try:
+            check_action(user, Action.WRITE)
+            check_mission_access(user, exclusion_cone.mission)
+
             # Check if satellite and ground station exist; raise an exception otherwise
             SatelliteService.get_satellite(db, exclusion_cone.satellite_id)
             GroundStationService.get_ground_station(db, exclusion_cone.gs_id)
@@ -43,24 +56,39 @@ class ExclusionConeService:
 
     @staticmethod
     def update_exclusion_cone(
-        db: Session, cone_id: uuid.UUID, exclusion_cone: ExclusionConeUpdateModel
+        db: Session,
+        user: UserModel,
+        ex_cone_id: uuid.UUID,
+        exclusion_cone: ExclusionConeUpdateModel,
     ) -> ExclusionCone:
         try:
-            existing_ex_cone = ExclusionConeService.get_exclusion_cone(db, cone_id)
+            check_action(user, Action.WRITE)
+
+            existing_ex_cone = ExclusionConeService.get_exclusion_cone(
+                db, user, ex_cone_id
+            )
 
             if not existing_ex_cone:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Exclusion cone with ID {cone_id} not found",
+                    detail=f"Exclusion cone with ID {ex_cone_id} not found",
                 )
 
+            logger.info(
+                f"Checking permissions of user ID:{user.id} for updating exclusion cone with ID {ex_cone_id}"
+            )
+            check_mission_access(user, existing_ex_cone.mission)
+
             update_data = exclusion_cone.model_dump(exclude_unset=True)
-
-            # Check if satellite and ground station exist; raise an exception otherwise
-            SatelliteService.get_satellite(db, update_data["satellite_id"])
-            GroundStationService.get_ground_station(db, update_data["gs_id"])
-
             for key, value in update_data.items():
+                if key == "satellite_id":
+                    logger.info(f"Checking if satellite ID:{update_data[key]} exists")
+                    SatelliteService.get_satellite(db, update_data[key])
+                if key == "gs_id":
+                    logger.info(
+                        f"Checking if ground station ID:{update_data[key]} exists"
+                    )
+                    GroundStationService.get_ground_station(db, update_data[key])
                 setattr(existing_ex_cone, key, value)
 
             db.commit()
@@ -73,18 +101,24 @@ class ExclusionConeService:
             db.rollback()
             raise HTTPException(
                 status_code=503,
-                detail=f"Database error while updating exclusion cone {cone_id}: {str(e)}",
+                detail=f"Database error while updating exclusion cone {ex_cone_id}: {str(e)}",
             )
         except Exception as e:
             raise HTTPException(
                 status_code=500,
-                detail=f"Unexpected error while updating exclusion cone {cone_id}: {str(e)}",
+                detail=f"Unexpected error while updating exclusion cone {ex_cone_id}: {str(e)}",
             )
 
     @staticmethod
-    def get_exclusion_cones(db: Session) -> list[ExclusionCone]:
+    def get_exclusion_cones(db: Session, user: UserModel) -> list[ExclusionCone]:
         try:
             statement = select(ExclusionCone)
+
+            if not has_system_privileges(user):
+                statement = select(ExclusionCone).where(
+                    (ExclusionCone.mission.in_(user.mission_access))  # type: ignore
+                )
+
             ex_cones = db.exec(statement).all()
             return list(ex_cones)
 
@@ -100,8 +134,12 @@ class ExclusionConeService:
             )
 
     @staticmethod
-    def get_exclusion_cone(db: Session, ex_cone_id: uuid.UUID) -> ExclusionCone:
+    def get_exclusion_cone(
+        db: Session, user: UserModel, ex_cone_id: uuid.UUID
+    ) -> ExclusionCone:
         try:
+            check_action(user, Action.READ)
+
             statement = select(ExclusionCone).where(ExclusionCone.id == ex_cone_id)
             ex_cone = db.exec(statement).first()
 
@@ -110,6 +148,7 @@ class ExclusionConeService:
                     status_code=404,
                     detail=f"Exclusion cone with ID {ex_cone_id} not found",
                 )
+            check_mission_access(user, ex_cone.mission)
             return ex_cone
 
         except HTTPException as http_e:
@@ -126,15 +165,26 @@ class ExclusionConeService:
             )
 
     @staticmethod
-    def delete_exclusion_cone(db: Session, ex_cone_id: uuid.UUID) -> ExclusionCone:
+    def delete_exclusion_cone(
+        db: Session, user: UserModel, ex_cone_id: uuid.UUID
+    ) -> ExclusionCone:
         try:
-            exclusion_cone = ExclusionConeService.get_exclusion_cone(db, ex_cone_id)
+            check_action(user, Action.WRITE)
+            exclusion_cone = ExclusionConeService.get_exclusion_cone(
+                db, user, ex_cone_id
+            )
 
             if not exclusion_cone:
                 raise HTTPException(
                     status_code=404,
                     detail=f"Exclusion cone with ID {ex_cone_id} not found",
                 )
+
+            logger.info(
+                f"Checking permissions of user ID:{user.id} for deleting exclusion cone with ID {ex_cone_id}"
+            )
+            check_mission_access(user, exclusion_cone.mission)
+
             db.delete(exclusion_cone)
             db.commit()
             return exclusion_cone

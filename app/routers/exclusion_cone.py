@@ -1,3 +1,4 @@
+import logging
 import uuid
 from fastapi import APIRouter, Depends
 from typing import List
@@ -7,10 +8,14 @@ from app.models.exclusion_cone import (
     ExclusionConeUpdateModel,
 )
 from sqlmodel import Session
+from app.models.user import UserModel
 from app.routers.error import getErrorResponses
+from app.services.auth import get_current_user
 from app.services.db import get_db
 from app.services.exclusion_cone import ExclusionConeService
 
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/excones", tags=["Exclusion Cone"])
 
 
@@ -23,9 +28,11 @@ router = APIRouter(prefix="/excones", tags=["Exclusion Cone"])
     responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def create_exclusion_cone(
-    request: ExclusionConeCreateModel, db: Session = Depends(get_db)
+    request: ExclusionConeCreateModel,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
 ):
-    return ExclusionConeService.create_exclusion_cone(db, request)
+    return ExclusionConeService.create_exclusion_cone(db, user, request)
 
 
 # PATCH /api/v1/excones/{excone_id}
@@ -40,8 +47,12 @@ def update_exclusion_cone(
     excone_id: uuid.UUID,
     request: ExclusionConeUpdateModel,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
 ):
-    return ExclusionConeService.update_exclusion_cone(db, excone_id, request)
+    logger.info(
+        f"API Path: /excones/{excone_id}, User: {user.id}, Request: {request.model_dump()}"
+    )
+    return ExclusionConeService.update_exclusion_cone(db, user, excone_id, request)
 
 
 # GET /api/v1/excones
@@ -52,8 +63,10 @@ def update_exclusion_cone(
     response_description="List of exclusion cone objects",
     responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
-def get_exclusion_cones(db: Session = Depends(get_db)):
-    return ExclusionConeService.get_exclusion_cones(db)
+def get_exclusion_cones(
+    db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)
+):
+    return ExclusionConeService.get_exclusion_cones(db, user)
 
 
 # GET /api/v1/excones/{excone_id}
@@ -64,8 +77,12 @@ def get_exclusion_cones(db: Session = Depends(get_db)):
     response_description="Specific exclusion object",
     responses={**getErrorResponses(404), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
-def get_exclusion_cone(excone_id: uuid.UUID, db: Session = Depends(get_db)):
-    return ExclusionConeService.get_exclusion_cone(db, excone_id)
+def get_exclusion_cone(
+    excone_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
+):
+    return ExclusionConeService.get_exclusion_cone(db, user, excone_id)
 
 
 # DELETE /api/v1/exclusion_cone/{exclusion_cone_id}
@@ -76,5 +93,9 @@ def get_exclusion_cone(excone_id: uuid.UUID, db: Session = Depends(get_db)):
     response_description="Deleted exclusion cone object",
     responses={**getErrorResponses(404), **getErrorResponses(409), **getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
-def delete_exclusion_cone(excone_id: uuid.UUID, db: Session = Depends(get_db)):
-    return ExclusionConeService.delete_exclusion_cone(db, excone_id)
+def delete_exclusion_cone(
+    excone_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
+):
+    return ExclusionConeService.delete_exclusion_cone(db, user, excone_id)

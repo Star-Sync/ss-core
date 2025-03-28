@@ -10,7 +10,7 @@ class ExclusionCone(SQLModel, table=True):
     __tablename__: str = "exclusion_cones"  # type: ignore
 
     id: uuid.UUID = Field(primary_key=True)
-    mission: str
+    mission: str = Field(nullable=False, index=True)
     angle_limit: float
     interfering_satellite: str
     satellite_id: uuid.UUID = Field(foreign_key="satellites.id")

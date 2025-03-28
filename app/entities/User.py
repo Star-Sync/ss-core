@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
-from sqlmodel import SQLModel, Field  # type: ignore
+from typing import List, Optional
+from sqlmodel import ARRAY, JSON, Column, SQLModel, Field, String  # type: ignore
 
 
 class User(SQLModel, table=True):
@@ -16,8 +16,9 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
     first_name: Optional[str] = Field(nullable=False, default="")
     last_name: Optional[str] = Field(nullable=False, default="")
-    role: str = Field(
-        nullable=False, default="user", description="Role of the user (admin/user)"
+    role: str = Field(nullable=False, default="MISSION_USER")
+    mission_access: Optional[List[str]] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String))
     )
 
 
@@ -27,12 +28,3 @@ class UserCreate(SQLModel):
     username: str
     email: str
     password: str
-
-
-class UserRead(SQLModel):
-    """Schema for user response"""
-
-    id: int
-    username: str
-    email: str
-    is_active: bool

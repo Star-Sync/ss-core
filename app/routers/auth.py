@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
+from app.models.user import UserModel
+
 from ..services import auth
-from ..entities.User import User, UserCreate, UserRead
+from ..entities.User import User, UserCreate
 from app.services.db import get_db
 
 router = APIRouter(
@@ -35,7 +37,7 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/register", response_model=UserRead)
+@router.post("/register", response_model=UserModel)
 async def register_user_endpoint(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
         # Call the service function instead of handling DB logic here
@@ -54,6 +56,6 @@ async def register_user_endpoint(user_data: UserCreate, db: Session = Depends(ge
     return new_user
 
 
-@router.get("/users/me", response_model=UserRead)
+@router.get("/users/me", response_model=UserModel)
 async def read_users_me(current_user: User = Depends(auth.get_current_active_user)):
     return current_user
