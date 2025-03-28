@@ -144,6 +144,7 @@ def schedule_with_slots(
             )
             for start, end in request_slots:
                 if remaining_time <= 0:
+                    request.scheduled = True
                     break
 
                 slot_duration = end - start
@@ -167,8 +168,6 @@ def schedule_with_slots(
                         contacts.append(contact)
                         # converting from float to int could cause issues in the future
                         remaining_time -= int((end - start).total_seconds())
-                        request.scheduled = True
-                        break
                 if request.scheduled:
                     break
             if not request.scheduled:

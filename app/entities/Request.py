@@ -35,10 +35,10 @@ class RFRequest(SQLModel, table=True):  # type: ignore
 
     def __init__(self, **data):
         super().__init__(**data)
-        self.time_remaining = (
-            self.uplink_time_requested
-            + self.downlink_time_requested
-            + self.science_time_requested
+        self.time_remaining = max(
+            self.uplink_time_requested,
+            self.downlink_time_requested,
+            self.science_time_requested,
         )
 
     # copying over from old RFTime class
