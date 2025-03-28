@@ -36,7 +36,7 @@ class Contact:
     slot: Slot
     gs_id: int
     request_id: uuid.UUID
-    id: uuid.UUID = uuid.uuid4()
+    id: uuid.UUID
 
 
 Request = RFRequest | ContactRequest
@@ -117,6 +117,7 @@ def schedule_with_slots(
                     slot=Slot(start_time=start_time, end_time=end_time),
                     request_id=request.id,
                     gs_id=request.ground_station_id,
+                    id=uuid.uuid4(),
                 )
 
                 slots[station_id][(start, start + slot_duration)] = contact
@@ -159,6 +160,7 @@ def schedule_with_slots(
                                 end_time=end_time,
                             ),
                             gs_id=gs.id,
+                            id=uuid.uuid4(),
                         )
 
                         slots[station_name][(start, end)] = contact
