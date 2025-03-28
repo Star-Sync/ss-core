@@ -7,7 +7,15 @@ class ErrorResponse(BaseModel):
 
 
 def getErrorResponses(code: int) -> Dict[int, Dict[str, Any]]:
-    if code == 404:
+    if code == 403:
+        return {
+            403: {
+                "description": "Permission denied",
+                "model": ErrorResponse,
+                "content": _getErrorContentExample(),
+            }
+        }
+    elif code == 404:
         return {
             404: {
                 "description": "Resource not found",
