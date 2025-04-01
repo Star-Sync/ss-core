@@ -12,7 +12,7 @@ class ExclusionCone(SQLModel, table=True):
     id: uuid.UUID = Field(primary_key=True)
     mission: str
     angle_limit: float
-    interfering_satellite: str
+    interfering_satellite: uuid.UUID = Field(foreign_key="satellites.id")
     satellite_id: uuid.UUID = Field(foreign_key="satellites.id")
     gs_id: int = Field(foreign_key="ground_stations.id")
     satellite: "Satellite" = Relationship(back_populates="ex_cones")
@@ -20,12 +20,12 @@ class ExclusionCone(SQLModel, table=True):
     # Will most likely be removed soon
     def __init__(
         self,
+        mission: str,
+        angle_limit: float,
+        interfering_satellite: uuid.UUID,
+        satellite_id: uuid.UUID,
+        gs_id: int,
         id: uuid.UUID | None = None,
-        mission: str = "",
-        angle_limit: float = 0,
-        interfering_satellite: str = "",
-        satellite_id: uuid.UUID = uuid.uuid4(),
-        gs_id: int = 1,
     ):
         self.id = id if id is not None else uuid.uuid4()
         self.mission = mission

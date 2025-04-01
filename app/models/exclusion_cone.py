@@ -16,9 +16,9 @@ class ExclusionConeCreateModel(BaseModel):
     angle_limit: float = Field(
         ge=0, description="The limiting angle between the two objects.", examples=[5.0]
     )
-    interfering_satellite: str = Field(
+    interfering_satellite: uuid.UUID = Field(
         description="The satellite which must be deconflicted against.",
-        examples=["OTHER SAT"],
+        examples=["7b16adda-0dfc-48d0-9902-0da6da504a71"],
     )
     satellite_id: uuid.UUID = Field(
         description="The satellite ID the request is for",
@@ -61,10 +61,10 @@ class ExclusionConeUpdateModel(BaseModel):
         description="The limiting angle between the two objects.",
         examples=[5.0],
     )
-    interfering_satellite: Optional[str] = Field(
+    interfering_satellite: Optional[uuid.UUID] = Field(
         default=None,
         description="The satellite which must be deconflicted against.",
-        examples=["OTHER SAT"],
+        examples=["7b16adda-0dfc-48d0-9902-0da6da504a71"],
     )
     satellite_id: Optional[uuid.UUID] = Field(
         default=None,
