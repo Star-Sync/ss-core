@@ -458,7 +458,7 @@ class RequestService:
                 rf_off=request.rfOffTime,
                 duration=int((request.losTime - request.aosTime).total_seconds()),
                 priority=1,
-                contact_id=None,  # Will be set when scheduled
+                booking_id=None,  # Will be set when scheduled
                 scheduled=False,
             )
             db.add(contact_request)
@@ -661,7 +661,6 @@ class RequestService:
                 requests,
                 list(GroundStationService.get_ground_stations(db)),
             )
-            # Transform bookings to GeneralContactResponseModel
             return bookings
         except SQLAlchemyError as e:
             db.rollback()
@@ -732,7 +731,7 @@ class RequestService:
                 rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
             ),
             ContactRequest(
                 mission="Mission 5",
@@ -750,7 +749,7 @@ class RequestService:
                 rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
             ),
         ]
         contacts = []
