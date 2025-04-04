@@ -12,7 +12,7 @@ from app.entities.Request import (
     ContactRequest,
     RFRequest,
 )
-from app.services.request import RequestService, Contact
+from app.services.request import RequestService, Booking
 import logging
 from app.routers.error import getErrorResponses
 
@@ -44,7 +44,7 @@ def get_requests(
 @router.get(
     "/bookings",
     summary="Get all bookings",
-    response_model=List[Contact],
+    response_model=List[Booking],
     responses={**getErrorResponses(503), **getErrorResponses(500)},  # type: ignore[dict-item]
 )
 def get_bookings(

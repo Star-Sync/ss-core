@@ -32,7 +32,7 @@ class Slot:
 
 
 @dataclass
-class Contact:
+class Booking:
     slot: Slot
     gs_id: int
     request_id: uuid.UUID
@@ -73,7 +73,7 @@ def divide_into_slots(
 
 def schedule_with_slots(
     requests: list[Request], stations: list[GroundStation]
-) -> list[Contact]:
+) -> list[Booking]:
     """Schedule the requests with the given slots
 
     Args:
@@ -81,12 +81,12 @@ def schedule_with_slots(
         stations (list[GroundStation]): List of GroundStations to schedule the requests with
 
     Returns:
-        list[Contact]: List of contacts that were scheduled
+        list[Booking]: List of bookings that were scheduled
     """
-    slots: dict[str, dict[tuple[datetime.datetime, datetime.datetime], Contact]] = (
+    slots: dict[str, dict[tuple[datetime.datetime, datetime.datetime], Booking]] = (
         defaultdict(dict)
     )
-    contacts: list[Contact] = []
+    bookings: list[Booking] = []
     # sort the requests by earliest end time
     requests.sort(key=lambda r: r.end_time)
     # set all requests to not scheduled
@@ -113,15 +113,15 @@ def schedule_with_slots(
                 if (start, start + slot_duration) in slots[station_id]:
                     continue
 
-                contact = Contact(
+                booking = Booking(
                     slot=Slot(start_time=start_time, end_time=end_time),
                     request_id=request.id,
                     gs_id=request.ground_station_id,
                     id=uuid.uuid4(),
                 )
 
-                slots[station_id][(start, start + slot_duration)] = contact
-                contacts.append(contact)
+                slots[station_id][(start, start + slot_duration)] = booking
+                bookings.append(booking)
                 # converting from float to int could cause issues in the future
                 remaining_time -= int(slot_duration.total_seconds())
                 request.scheduled = True
@@ -154,7 +154,7 @@ def schedule_with_slots(
                     station_name = gs.name
                     if (start, end) not in slots[station_name]:
                         request.ground_station_id = gs.id
-                        contact = Contact(
+                        booking = Booking(
                             request_id=request.id,
                             slot=Slot(
                                 start_time=start_time,
@@ -164,8 +164,8 @@ def schedule_with_slots(
                             id=uuid.uuid4(),
                         )
 
-                        slots[station_name][(start, end)] = contact
-                        contacts.append(contact)
+                        slots[station_name][(start, end)] = booking
+                        bookings.append(booking)
                         # converting from float to int could cause issues in the future
                         remaining_time -= int((end - start).total_seconds())
                 if request.scheduled:
@@ -175,7 +175,7 @@ def schedule_with_slots(
                     f"Could not schedule request: {request.mission} - {request.satellite_id}"
                 )
     pprint(requests)
-    return contacts
+    return bookings
 
 
 def angle_diff(
@@ -458,7 +458,7 @@ class RequestService:
                 rf_off=request.rfOffTime,
                 duration=int((request.losTime - request.aosTime).total_seconds()),
                 priority=1,
-                contact_id=None,  # Will be set when scheduled
+                booking_id=None,  # Will be set when scheduled
                 scheduled=False,
             )
             db.add(contact_request)
@@ -653,16 +653,15 @@ class RequestService:
         )
 
     @staticmethod
-    def get_bookings(db: Session) -> list[Contact]:
+    def get_bookings(db: Session) -> list[Booking]:
         # get all requests and schedule them
         try:
             requests = RequestService.get_all_requests(db)
-            contacts = schedule_with_slots(
+            bookings = schedule_with_slots(
                 requests,
                 list(GroundStationService.get_ground_stations(db)),
             )
-            # Transform contacts to GeneralContactResponseModel
-            return contacts
+            return bookings
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error getting bookings: {str(e)}")
@@ -732,7 +731,7 @@ class RequestService:
                 rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
             ),
             ContactRequest(
                 mission="Mission 5",
@@ -750,7 +749,7 @@ class RequestService:
                 rf_off=datetime.datetime(2025, 1, 1, 1, 0, 0),
                 duration=30,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
             ),
         ]
         contacts = []

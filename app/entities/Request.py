@@ -82,7 +82,7 @@ class ContactRequest(SQLModel, table=True):  # type: ignore
     satellite_id: UUID = Field(foreign_key="satellites.id")
     start_time: datetime
     end_time: datetime
-    contact_id: Optional[UUID]
+    booking_id: Optional[UUID]
     scheduled: bool = Field(default=False)
     priority: int  # Higher is better
     ground_station_id: int = Field(foreign_key="ground_stations.id")
@@ -95,10 +95,6 @@ class ContactRequest(SQLModel, table=True):  # type: ignore
     rf_on: datetime
     rf_off: datetime
     duration: int
-
-    # satellite: Optional["Satellite"] = Relationship(back_populates="requests")
-    # contact: Optional["Contact"] = Relationship()
-    # ground_station: Optional["GroundStation"] = Relationship()
 
     def __repr__(self):
         duration_str = "N/A"
