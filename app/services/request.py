@@ -699,7 +699,7 @@ class RequestService:
                 science_time_requested=30,
                 min_passes=1,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
                 num_passes_remaining=1,  # Set explicit integer value
             ),
             RFRequest(
@@ -712,7 +712,7 @@ class RequestService:
                 science_time_requested=30,
                 min_passes=1,
                 priority=1,
-                contact_id=uuid.uuid4(),
+                booking_id=None,
                 num_passes_remaining=1,  # Set explicit integer value
             ),
             ContactRequest(
