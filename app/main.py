@@ -12,6 +12,7 @@ from .routers import (
     satellite,
     exclusion_cone,
     user,
+    station_sim,
 )
 import logging
 
@@ -39,6 +40,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(satellite.router, prefix="/api/v1")
 app.include_router(exclusion_cone.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1")
+app.include_router(station_sim.router, prefix="/api/v1")
 
 
 @app.get("/", include_in_schema=False)
