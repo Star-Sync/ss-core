@@ -11,3 +11,5 @@ types-python-jose
 types-passlib
 types-pyjwt
 pygelf
+requests
+types-requests

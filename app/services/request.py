@@ -14,6 +14,7 @@ from app.entities.Satellite import Satellite
 from app.entities.GroundStation import GroundStation
 from app.entities.Request import RFRequest, ContactRequest
 from app.models.request import ContactRequestModel, RFTimeRequestModel
+from app.services.station_sim import StationSimulatorService
 import uuid
 import logging
 from uuid import UUID
@@ -23,6 +24,9 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 random.seed(42)
+
+# Initialize station simulator service
+station_sim_service = StationSimulatorService()
 
 
 @dataclass
@@ -71,6 +75,46 @@ def divide_into_slots(
     return slots
 
 
+def check_station_availability(
+    station_name: str,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    desired_state: str,
+) -> bool:
+    """
+    Check if a station is available for scheduling during the given time period.
+
+    Args:
+        station_name: Name of the ground station
+        start_time: Start time of the requested slot
+        end_time: End time of the requested slot
+        desired_state: The desired state for the station ("free", "both_busy", "science_busy", "telemetry_busy")
+
+    Returns:
+        bool: True if the station is available, False otherwise
+    """
+    try:
+        # Check if the station is free during the requested time
+        busy_times = station_sim_service.query_busy_times(
+            station=station_name, start_time=start_time, end_time=end_time
+        )
+
+        # If there are any busy times that overlap with our requested slot, the station is not available
+        for busy_time in busy_times:
+            busy_start = datetime.datetime.fromisoformat(busy_time["start_time"])
+            busy_end = datetime.datetime.fromisoformat(busy_time["end_time"])
+
+            # Check for overlap
+            if start_time < busy_end and end_time > busy_start:
+                return False
+
+        return True
+    except Exception as e:
+        logger.error(f"Error checking station availability: {str(e)}")
+        # If we can't check the station simulator, assume the station is available
+        return True
+
+
 def schedule_with_slots(
     requests: list[Request], stations: list[GroundStation]
 ) -> list[Booking]:
@@ -109,8 +153,29 @@ def schedule_with_slots(
                 end_time = start_time + slot_duration
 
                 station_id = str(request.ground_station_id)
+                station = next(
+                    (s for s in stations if s.id == request.ground_station_id), None
+                )
 
+                if not station:
+                    logger.error(f"Station not found: {request.ground_station_id}")
+                    continue
+
+                # Check if the slot is already taken
                 if (start, start + slot_duration) in slots[station_id]:
+                    continue
+
+                # Check station simulator availability
+                if not check_station_availability(
+                    station_name=station.name,
+                    start_time=start_time,
+                    end_time=end_time,
+                    desired_state=(
+                        "both_busy"
+                        if request.science and request.telemetry
+                        else "science_busy" if request.science else "telemetry_busy"
+                    ),
+                ):
                     continue
 
                 booking = Booking(
@@ -127,7 +192,7 @@ def schedule_with_slots(
                 request.scheduled = True
 
             if not request.scheduled:
-                print(
+                logger.warning(
                     f"Could not schedule request: {request.mission} - {request.satellite_id} - {request.ground_station_id}"
                 )
 
@@ -153,6 +218,19 @@ def schedule_with_slots(
                 for gs in stations:
                     station_name = gs.name
                     if (start, end) not in slots[station_name]:
+                        # Check station simulator availability
+                        if not check_station_availability(
+                            station_name=station_name,
+                            start_time=start_time,
+                            end_time=end_time,
+                            desired_state=(
+                                "both_busy"
+                                if request.science_time_requested > 0
+                                else "telemetry_busy"
+                            ),
+                        ):
+                            continue
+
                         request.ground_station_id = gs.id
                         booking = Booking(
                             request_id=request.id,
@@ -171,10 +249,9 @@ def schedule_with_slots(
                 if request.scheduled:
                     break
             if not request.scheduled:
-                print(
+                logger.warning(
                     f"Could not schedule request: {request.mission} - {request.satellite_id}"
                 )
-    pprint(requests)
     return bookings
 
 

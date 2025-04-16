@@ -17,9 +17,12 @@ certifi==2024.8.30
     # via
     #   httpcore
     #   httpx
+    #   requests
     #   skyfield
 cffi==1.17.1
     # via cryptography
+charset-normalizer==3.4.1
+    # via requests
 click==8.1.7
     # via
     #   typer
@@ -37,7 +40,9 @@ exceptiongroup==1.2.2
 fastapi[standard]==0.115.4
     # via -r requirements.in
 fastapi-cli[standard]==0.0.5
-    # via fastapi
+    # via
+    #   fastapi
+    #   fastapi-cli
 greenlet==3.1.1
     # via sqlalchemy
 h11==0.14.0
@@ -55,6 +60,7 @@ idna==3.10
     #   anyio
     #   email-validator
     #   httpx
+    #   requests
 jinja2==3.1.4
     # via fastapi
 jplephem==2.22
@@ -100,6 +106,8 @@ python-multipart==0.0.17
     # via fastapi
 pyyaml==6.0.2
     # via uvicorn
+requests==2.32.3
+    # via -r requirements.in
 rich==13.9.4
     # via typer
 rsa==4.9
@@ -134,6 +142,8 @@ types-pyjwt==1.7.1
     # via -r requirements.in
 types-python-jose==3.4.0.20250224
     # via -r requirements.in
+types-requests==2.32.0.20250328
+    # via -r requirements.in
 typing-extensions==4.12.2
     # via
     #   anyio
@@ -144,6 +154,10 @@ typing-extensions==4.12.2
     #   sqlalchemy
     #   typer
     #   uvicorn
+urllib3==2.4.0
+    # via
+    #   requests
+    #   types-requests
 uvicorn[standard]==0.32.0
     # via
     #   -r requirements.in
