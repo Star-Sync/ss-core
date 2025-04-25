@@ -1,68 +1,54 @@
-# Get started
+<h1 align="center">
+  <br>
+  <a href="http://www.amitmerchant.com/electron-markdownify"><img src="https://raw.githubusercontent.com/amitmerchant1990/electron-markdownify/master/app/img/markdownify.png" alt="Markdownify" width="200"></a>
+  <br>
+  StarSync Core
+  <br>
+</h1>
 
-## Running the application
+<h4 align="center">A minimal Markdown Editor desktop app built on top of <a href="http://electron.atom.io" target="_blank">Electron</a>.</h4>
 
-### In a virtual environment
+<p align="center">
+  <a href="https://badge.fury.io/js/electron-markdownify">
+    <img src="https://badge.fury.io/js/electron-markdownify.svg"
+         alt="Gitter">
+  </a>
+  <a href="https://gitter.im/amitmerchant1990/electron-markdownify"><img src="https://badges.gitter.im/amitmerchant1990/electron-markdownify.svg"></a>
+  <a href="https://saythanks.io/to/bullredeyes@gmail.com">
+      <img src="https://img.shields.io/badge/SayThanks.io-%E2%98%BC-1EAEDB.svg">
+  </a>
+  <a href="https://www.paypal.me/AmitMerchant">
+    <img src="https://img.shields.io/badge/$-donate-ff69b4.svg?maxAge=2592000&amp;style=flat">
+  </a>
+</p>
 
-1. Install python (im using 3.10.12)
-2. Create a virtual environment
+<p align="center">
+  <a href="#how-to-use">How To Use</a>
+</p>
 
-    ```sh
-    python3 -m venv .venv
-    ```
+![screenshot](https://raw.githubusercontent.com/amitmerchant1990/electron-markdownify/master/app/img/markdownify.gif)
 
-3. Activate the virtual environment:
-    - On Windows:
-        ```sh
-        .venv\Scripts\activate
-        ```
-    - On Linux/Mac:
-        ```sh
-        source .venv/bin/activate
-        ```
-4. Install the requirements:
-    ```sh
-    pip install -r requirements.txt
-    ```
-5. Run the app locally with Uvicorn:
-    ```sh
-    uvicorn app.main:app --reload
-    ```
 
-### Running in a Docker container
+## How To Use
 
-1. Change directories into the `docker` folder:
-    ```sh
-    cd docker
-    ```
-2. Run the Docker container:
-    ```sh
-    docker compose up --build
-    ```
+To clone and run this application, you'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer. From your command line:
 
-## Running Tests
+```bash
+# Clone this repository
+$ git clone https://github.com/Star-Sync/ss-core
 
-1. Ensure the virtual environment is activated.
-2. Install the dev requirements:
-    ```sh
-    pip install -r requirements-dev.txt
-    ```
-3. Run the tests with pytest:
-    ```sh
-    pytest --cov=./ --cov-report=html --cov-fail-under=50
-    ```
-4. View the coverage report by opening `htmlcov/index.html` in a browser.
+# Go into the repository
+$ cd ss-cre
 
-## Accessing the Application
+# Go into the docker directory
+$ cd docker
 
--   The application will be available at `http://localhost:8000`.
+# Run the container
+$ docker compose up --build
+```
 
-## API Documentation
+## License
 
--   FastAPI automatically generates interactive API documentation:
-    -   Swagger UI: `http://localhost:8000/docs`
-    -   ReDoc: `http://localhost:8000/redoc`
+Apache
 
-# Layout best practices
-
-https://fastapi.tiangolo.com/tutorial/bigger-applications/
+---
