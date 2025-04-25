@@ -16,7 +16,7 @@ To clone and run the `ss-core` service, you'll need Docker installed on your com
 $ git clone https://github.com/Star-Sync/ss-core
 
 # Go into the repository
-$ cd ss-cre
+$ cd ss-core
 
 # Go into the docker directory
 $ cd docker
