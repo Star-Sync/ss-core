@@ -4,7 +4,7 @@
 
 ### In a virtual environment
 
-1. Install python (im using 3.10.12)
+1. Install python 3.10.12
 2. Create a virtual environment
 
     ```sh
