@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="http://www.amitmerchant.com/electron-markdownify"><img src="https://raw.githubusercontent.com/amitmerchant1990/electron-markdownify/master/app/img/markdownify.png" alt="StarSync-Core" width="200"></a>
+  <a href="http://github.com/Star-Sync"><img src="https://x5a81d4mva.ufs.sh/f/vO1KpS4QDgU0XomMFhvzcj1LEp8Nb3ZI0koeyJSitX9s2lWF" alt="StarSync-Core" width="200"></a>
   <br>
   StarSync Core
   <br>
