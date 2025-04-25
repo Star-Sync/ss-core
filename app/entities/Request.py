@@ -20,7 +20,7 @@ class RFRequest(SQLModel, table=True):  # type: ignore
     satellite_id: UUID = Field(foreign_key="satellites.id")
     start_time: datetime
     end_time: datetime
-    contact_id: Optional[UUID]
+    booking_id: Optional[UUID]
     scheduled: bool = Field(default=False)
     priority: int  # Higher is better
     uplink_time_requested: int = Field(default=0)
