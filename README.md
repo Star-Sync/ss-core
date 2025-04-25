@@ -24,3 +24,13 @@ $ cd docker
 # Run the container
 $ docker compose up --build
 ```
+
+## How to run tests
+```bash
+# Install testing packages
+$ pip install -r requirements-dev.txt
+
+# Run tests and generate coverage report
+$ python -m pytest --cov=./ --cov-report=html --cov-fail-under=50
+```
+View the coverage report by opening `htmlcov/index.html` in a browser.
