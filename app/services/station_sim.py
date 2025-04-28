@@ -59,7 +59,7 @@ class StationSimulatorService:
         Schedule a pass at a ground station.
 
         Args:
-            station: Name of the ground station (e.g., "ICAN", "GATN", "PASS")
+            station: Name of the ground station (e.g., "Inuvik NorthWest", "Prince Albert", "Gatineau Quebec")
             start_time: Start time of the pass
             end_time: End time of the pass
             state: Desired state ("free", "both_busy", "science_busy", "telemetry_busy")
@@ -123,14 +123,13 @@ class StationSimulatorService:
         try:
             url = f"{self.base_url}/{station}/query_busy_times/"
             params = {
-                "start_time": start_time.isoformat(),
-                "end_time": end_time.isoformat(),
+                "start_time": start_time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "end_time": end_time.strftime("%Y-%m-%dT%H:%M:%S"),
             }
-
             logger.debug(f"Querying busy times at {url} with params: {params}")
             response = requests.get(url, params=params)
             response.raise_for_status()
-            return response.json()
+            return response.json()["busy_times"]
 
         except Exception as e:
             self._handle_request_error("querying busy times", e)
