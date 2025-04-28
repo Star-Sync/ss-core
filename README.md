@@ -1,68 +1,36 @@
-# Get started
+<h1 align="center">
+  <br>
+  <a href="http://github.com/Star-Sync"><img src="https://x5a81d4mva.ufs.sh/f/vO1KpS4QDgU0XomMFhvzcj1LEp8Nb3ZI0koeyJSitX9s2lWF" alt="StarSync-Core" width="200"></a>
+  <br>
+  StarSync Core
+  <br>
+</h1>
 
-## Running the application
 
-### In a virtual environment
+## How To Use
 
-1. Install python (im using 3.10.12)
-2. Create a virtual environment
+To clone and run the `ss-core` service, you'll need Docker installed on your computer.
 
-    ```sh
-    python3 -m venv .venv
-    ```
+```bash
+# Clone this repository
+$ git clone https://github.com/Star-Sync/ss-core
 
-3. Activate the virtual environment:
-    - On Windows:
-        ```sh
-        .venv\Scripts\activate
-        ```
-    - On Linux/Mac:
-        ```sh
-        source .venv/bin/activate
-        ```
-4. Install the requirements:
-    ```sh
-    pip install -r requirements.txt
-    ```
-5. Run the app locally with Uvicorn:
-    ```sh
-    uvicorn app.main:app --reload
-    ```
+# Go into the repository
+$ cd ss-core
 
-### Running in a Docker container
+# Go into the docker directory
+$ cd docker
 
-1. Change directories into the `docker` folder:
-    ```sh
-    cd docker
-    ```
-2. Run the Docker container:
-    ```sh
-    docker compose up --build
-    ```
+# Run the container
+$ docker compose up --build
+```
 
-## Running Tests
+## How to run tests
+```bash
+# Install testing packages
+$ pip install -r requirements-dev.txt
 
-1. Ensure the virtual environment is activated.
-2. Install the dev requirements:
-    ```sh
-    pip install -r requirements-dev.txt
-    ```
-3. Run the tests with pytest:
-    ```sh
-    pytest --cov=./ --cov-report=html --cov-fail-under=50
-    ```
-4. View the coverage report by opening `htmlcov/index.html` in a browser.
-
-## Accessing the Application
-
--   The application will be available at `http://localhost:8000`.
-
-## API Documentation
-
--   FastAPI automatically generates interactive API documentation:
-    -   Swagger UI: `http://localhost:8000/docs`
-    -   ReDoc: `http://localhost:8000/redoc`
-
-# Layout best practices
-
-https://fastapi.tiangolo.com/tutorial/bigger-applications/
+# Run tests and generate coverage report
+$ python -m pytest --cov=./ --cov-report=html --cov-fail-under=50
+```
+View the coverage report by opening `htmlcov/index.html` in a browser.
