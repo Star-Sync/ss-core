@@ -40,9 +40,30 @@ class Satellite(SQLModel, table=True):
         self.priority = priority
 
     def get_sf_sat(self) -> EarthSatellite:
-        tle_lines = self.tle.splitlines()
-        satellite = EarthSatellite(tle_lines[1], tle_lines[2], tle_lines[0])
-        return satellite
+        try:
+            tle_lines = self.tle.splitlines()
+            if len(tle_lines) < 3:
+                raise ValueError(
+                    f"Invalid TLE format for satellite {self.name}. Expected 3 lines, got {len(tle_lines)}"
+                )
+
+            # Ensure we have the name, line 1, and line 2
+            name = tle_lines[0].strip()
+            line1 = tle_lines[1].strip()
+            line2 = tle_lines[2].strip()
+
+            # Validate TLE format
+            if not line1.startswith("1 ") or not line2.startswith("2 "):
+                raise ValueError(
+                    f"Invalid TLE format for satellite {self.name}. Lines must start with '1 ' and '2 '"
+                )
+
+            satellite = EarthSatellite(line1, line2, name)
+            return satellite
+        except Exception as e:
+            raise ValueError(
+                f"Error creating skyfield satellite for {self.name}: {str(e)}"
+            )
 
     def __repr__(self):
         return f"Satellite(name={self.name})"

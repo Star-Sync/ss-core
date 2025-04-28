@@ -14,6 +14,7 @@ from app.entities.Satellite import Satellite
 from app.entities.GroundStation import GroundStation
 from app.entities.Request import RFRequest, ContactRequest
 from app.models.request import ContactRequestModel, RFTimeRequestModel
+from app.services.station_sim import StationSimulatorService
 import uuid
 import logging
 from uuid import UUID
@@ -23,6 +24,9 @@ from fastapi import HTTPException
 logger = logging.getLogger(__name__)
 
 random.seed(42)
+
+# Initialize station simulator service
+station_sim_service = StationSimulatorService()
 
 
 @dataclass
@@ -48,7 +52,7 @@ Request = RFRequest | ContactRequest
 def divide_into_slots(
     start_time: datetime.datetime,
     end_time: datetime.datetime,
-    slot_duration: int = 15 * 60,
+    slot_duration: int = 6 * 60,
 ):
     """Divide the time between start_time and end_time into slots of slot_duration
 
@@ -60,6 +64,9 @@ def divide_into_slots(
     Returns:
         list[tuple[datetime.datetime, datetime.datetime]]: List of tuples representing the start and end time
     """
+    logger.info(
+        f"Dividing time window from {start_time} to {end_time} into {slot_duration}s slots"
+    )
     slots: list[tuple[datetime.datetime, datetime.datetime]] = []
     current_time = start_time
     while current_time < end_time:
@@ -68,21 +75,92 @@ def divide_into_slots(
         )
         current_time += datetime.timedelta(seconds=slot_duration)
 
+    logger.info(f"Created {len(slots)} slots")
     return slots
 
 
+def check_station_availability(
+    station_name: str,
+    start_time: datetime.datetime,
+    end_time: datetime.datetime,
+    desired_state: str,
+) -> bool:
+    """
+    Check if a station is available for scheduling during the given time period.
+
+    Args:
+        station_name: Name of the ground station
+        start_time: Start time of the requested slot
+        end_time: End time of the requested slot
+        desired_state: The desired state for the station ("free", "both_busy", "science_busy", "telemetry_busy")
+
+    Returns:
+        bool: True if the station is available, False otherwise
+    """
+    logger.info(
+        f"Checking availability for station {station_name} from {start_time} to {end_time}"
+    )
+    try:
+        # Ensure times have UTC timezone
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=datetime.timezone.utc)
+        if end_time.tzinfo is None:
+            end_time = end_time.replace(tzinfo=datetime.timezone.utc)
+
+        # Convert to ISO format without timezone
+        start_iso = start_time.strftime("%Y-%m-%dT%H:%M:%S")
+        end_iso = end_time.strftime("%Y-%m-%dT%H:%M:%S")
+        logger.info(f"Using ISO format times: {start_iso} to {end_iso}")
+
+        # Check if the station is free during the requested time
+        try:
+            busy_times = station_sim_service.query_busy_times(
+                station=station_name, start_time=start_time, end_time=end_time
+            )
+            logger.info(f"Retrieved {len(busy_times)} busy times")
+
+            # If there are any busy times that overlap with our requested slot, the station is not available
+            for busy_time in busy_times:
+                busy_start = datetime.datetime.fromisoformat(busy_time["start_time"])
+                busy_end = datetime.datetime.fromisoformat(busy_time["end_time"])
+
+                # Check for overlap
+                if start_time < busy_end and end_time > busy_start:
+                    logger.info(
+                        f"Found overlap with busy time {busy_start} to {busy_end}"
+                    )
+                    return False
+
+            logger.info("No overlaps found, station is available")
+            return True
+        except HTTPException as e:
+            if e.status_code == 404:
+                logger.warning(f"Station {station_name} not found in simulator")
+                return False
+            raise
+
+    except Exception as e:
+        logger.error(f"Error checking station availability: {str(e)}")
+        return False
+
+
 def schedule_with_slots(
-    requests: list[Request], stations: list[GroundStation]
+    requests: list[Request], stations: list[GroundStation], db: Session
 ) -> list[Booking]:
     """Schedule the requests with the given slots
 
     Args:
         requests (list[Request]): List of requests to schedule
         stations (list[GroundStation]): List of GroundStations to schedule the requests with
+        db (Session): Database session
 
     Returns:
         list[Booking]: List of bookings that were scheduled
     """
+    logger.info(
+        f"Starting schedule_with_slots with {len(requests)} requests and {len(stations)} stations"
+    )
+
     slots: dict[str, dict[tuple[datetime.datetime, datetime.datetime], Booking]] = (
         defaultdict(dict)
     )
@@ -93,13 +171,47 @@ def schedule_with_slots(
     for request in requests:
         request.scheduled = False
 
+    # Get all satellites for visibility checks
+    logger.info("Fetching satellites for visibility checks")
+    try:
+        all_satellites = SatelliteService.get_satellites(db)
+        logger.info(f"Retrieved {len(all_satellites)} satellites from database")
+
+        satellites = {}
+        for sat in all_satellites:
+            try:
+                logger.info(f"Processing satellite {sat.id} - {sat.name}")
+                logger.info(f"TLE data: {sat.tle}")
+                sf_sat = sat.get_sf_sat()
+                satellites[sat.id] = sf_sat
+                logger.info(
+                    f"Successfully converted satellite {sat.id} to skyfield object"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error converting satellite {sat.id} ({sat.name}) to skyfield object: {str(e)}"
+                )
+                raise
+
+        logger.info(f"Successfully processed {len(satellites)} satellites")
+    except Exception as e:
+        logger.error(f"Error fetching or processing satellites: {str(e)}")
+        raise
+
     # Schedule ContactRequests first
     for request in requests:
         if isinstance(request, ContactRequest):
+            logger.info(
+                f"Processing ContactRequest: {request.mission} - {request.satellite_id}"
+            )
             remaining_time: int = request.duration
             request_slots = divide_into_slots(request.start_time, request.end_time)
+            logger.info(f"Divided request into {len(request_slots)} slots")
+            slots_scheduled = 0
+
             for start, end in request_slots:
                 if remaining_time <= 0:
+                    logger.info("No remaining time, breaking slot loop")
                     break
 
                 slot_duration: datetime.timedelta = min(
@@ -108,11 +220,77 @@ def schedule_with_slots(
                 start_time = start
                 end_time = start_time + slot_duration
 
-                station_id = str(request.ground_station_id)
+                # Ensure times have UTC timezone
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=datetime.timezone.utc)
+                if end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=datetime.timezone.utc)
 
-                if (start, start + slot_duration) in slots[station_id]:
+                station_id = str(request.ground_station_id)
+                station = next(
+                    (s for s in stations if s.id == request.ground_station_id), None
+                )
+
+                if not station:
+                    logger.error(f"Station not found: {request.ground_station_id}")
                     continue
 
+                # Check if the slot is already taken
+                if (start, start + slot_duration) in slots[station_id]:
+                    logger.info(f"Slot already taken for station {station_id}")
+                    continue
+
+                # Check station simulator availability
+                logger.info(f"Checking station availability for {station.name}")
+                if not check_station_availability(
+                    station_name=station.name,
+                    start_time=start_time,
+                    end_time=end_time,
+                    desired_state=(
+                        "both_busy"
+                        if request.science and request.telemetry
+                        else "science_busy" if request.science else "telemetry_busy"
+                    ),
+                ):
+                    logger.info(f"Station {station.name} not available")
+                    continue
+
+                # Check satellite visibility
+                satellite = satellites.get(request.satellite_id)
+                if not satellite:
+                    logger.error(f"Satellite not found: {request.satellite_id}")
+                    continue
+
+                logger.info(f"Checking visibility for satellite {request.satellite_id}")
+                if not is_visible(satellite, station, start_time):
+                    logger.info(f"Satellite {request.satellite_id} not visible")
+                    continue
+
+                # Check exclusion times with other satellites
+                logger.info("Checking exclusion times")
+                exclusion_times = []
+                for other_sat_id, other_sat in satellites.items():
+                    if other_sat_id != request.satellite_id:
+                        angle_diffs = angle_diff(
+                            start_time,
+                            end_time,
+                            satellite,
+                            other_sat,
+                            station.get_sf_geo_position(),
+                        )
+                        exclusion_times.extend(
+                            get_excl_times(angle_diffs, 5.0)
+                        )  # 5 degree threshold
+
+                # Skip if slot overlaps with exclusion times
+                if any(
+                    start_time < excl_end and end_time > excl_start
+                    for excl_start, excl_end in exclusion_times
+                ):
+                    logger.info("Slot overlaps with exclusion times")
+                    continue
+
+                logger.info(f"Creating booking for slot {start_time} to {end_time}")
                 booking = Booking(
                     slot=Slot(start_time=start_time, end_time=end_time),
                     request_id=request.id,
@@ -122,37 +300,113 @@ def schedule_with_slots(
 
                 slots[station_id][(start, start + slot_duration)] = booking
                 bookings.append(booking)
+                slots_scheduled += 1
                 # converting from float to int could cause issues in the future
                 remaining_time -= int(slot_duration.total_seconds())
-                request.scheduled = True
+                logger.info(f"Remaining time: {remaining_time} seconds")
 
-            if not request.scheduled:
-                print(
+            # Mark as scheduled if all slots were successfully scheduled
+            if slots_scheduled > 0 and remaining_time <= 0:
+                logger.info(f"Marking ContactRequest {request.id} as scheduled")
+                request.scheduled = True
+                db.add(request)
+                db.commit()
+            else:
+                logger.warning(
                     f"Could not schedule request: {request.mission} - {request.satellite_id} - {request.ground_station_id}"
                 )
 
     # Schedule RFRequests next
     for request in requests:
         if isinstance(request, RFRequest):
+            logger.info(
+                f"Processing RFRequest: {request.mission} - {request.satellite_id}"
+            )
             request_slots = divide_into_slots(request.start_time, request.end_time)
-            remaining_time = max(
+            logger.info(f"Divided request into {len(request_slots)} slots")
+            total_time_requested = max(
                 [
                     request.downlink_time_requested,
                     request.uplink_time_requested,
                     request.science_time_requested,
                 ]
             )
+            remaining_time = total_time_requested
+            slots_scheduled = 0
+
             for start, end in request_slots:
                 if remaining_time <= 0:
-                    request.scheduled = True
+                    logger.info("No remaining time, breaking slot loop")
                     break
 
                 slot_duration = end - start
                 start_time = start
                 end_time = end
+
+                # Ensure times have UTC timezone
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=datetime.timezone.utc)
+                if end_time.tzinfo is None:
+                    end_time = end_time.replace(tzinfo=datetime.timezone.utc)
+
                 for gs in stations:
                     station_name = gs.name
                     if (start, end) not in slots[station_name]:
+                        # Check station simulator availability
+                        logger.info(f"Checking station availability for {station_name}")
+                        if not check_station_availability(
+                            station_name=station_name,
+                            start_time=start_time,
+                            end_time=end_time,
+                            desired_state=(
+                                "both_busy"
+                                if request.science_time_requested > 0
+                                else "telemetry_busy"
+                            ),
+                        ):
+                            logger.info(f"Station {station_name} not available")
+                            continue
+
+                        # Check satellite visibility
+                        satellite = satellites.get(request.satellite_id)
+                        if not satellite:
+                            logger.error(f"Satellite not found: {request.satellite_id}")
+                            continue
+
+                        logger.info(
+                            f"Checking visibility for satellite {request.satellite_id}"
+                        )
+                        if not is_visible(satellite, gs, start_time):
+                            logger.info(f"Satellite {request.satellite_id} not visible")
+                            continue
+
+                        # Check exclusion times with other satellites
+                        logger.info("Checking exclusion times")
+                        exclusion_times = []
+                        for other_sat_id, other_sat in satellites.items():
+                            if other_sat_id != request.satellite_id:
+                                angle_diffs = angle_diff(
+                                    start_time,
+                                    end_time,
+                                    satellite,
+                                    other_sat,
+                                    gs.get_sf_geo_position(),
+                                )
+                                exclusion_times.extend(
+                                    get_excl_times(angle_diffs, 5.0)
+                                )  # 5 degree threshold
+
+                        # Skip if slot overlaps with exclusion times
+                        if any(
+                            start_time < excl_end and end_time > excl_start
+                            for excl_start, excl_end in exclusion_times
+                        ):
+                            logger.info("Slot overlaps with exclusion times")
+                            continue
+
+                        logger.info(
+                            f"Creating booking for slot {start_time} to {end_time}"
+                        )
                         request.ground_station_id = gs.id
                         booking = Booking(
                             request_id=request.id,
@@ -166,15 +420,24 @@ def schedule_with_slots(
 
                         slots[station_name][(start, end)] = booking
                         bookings.append(booking)
+                        slots_scheduled += 1
                         # converting from float to int could cause issues in the future
                         remaining_time -= int((end - start).total_seconds())
-                if request.scheduled:
-                    break
-            if not request.scheduled:
-                print(
+                        logger.info(f"Remaining time: {remaining_time} seconds")
+                        break  # Break after finding a suitable station for this slot
+
+            # Mark as scheduled if all slots were successfully scheduled
+            if slots_scheduled > 0 and remaining_time <= 0:
+                logger.info(f"Marking RFRequest {request.id} as scheduled")
+                request.scheduled = True
+                db.add(request)
+                db.commit()
+            else:
+                logger.warning(
                     f"Could not schedule request: {request.mission} - {request.satellite_id}"
                 )
-    pprint(requests)
+
+    logger.info(f"Completed scheduling with {len(bookings)} total bookings")
     return bookings
 
 
@@ -197,6 +460,13 @@ def angle_diff(
     Returns:
         list[tuple[datetime.datetime, float]]: List of tuples containing the time and angle difference between the two satellites
     """
+    logger.info(f"Calculating angle differences from {start_t} to {end_t}")
+
+    # Ensure times have UTC timezone
+    if start_t.tzinfo is None:
+        start_t = start_t.replace(tzinfo=datetime.timezone.utc)
+    if end_t.tzinfo is None:
+        end_t = end_t.replace(tzinfo=datetime.timezone.utc)
 
     total_mins = int((end_t - start_t).total_seconds() / 60)
 
@@ -222,6 +492,8 @@ def angle_diff(
         if sat1_altitude.degrees > 0 and sat2_altitude.degrees > 0:  # type: ignore
             degree_diff = sat1_observed.separation_from(sat2_observed).degrees
             angles.append((t.utc_datetime(), degree_diff))
+
+    logger.info(f"Calculated {len(angles)} angle differences")
     return angles
 
 
@@ -237,11 +509,16 @@ def get_excl_times(
     Returns:
         list[tuple[datetime.datetime, datetime.datetime]]: List of tuples containing the start and end time of the exclusion times
     """
+    logger.info(f"Calculating exclusion times with threshold {excl_angle} degrees")
     exclusion_times: list[tuple[datetime.datetime, datetime.datetime]] = []
     min = None
     max = None
 
     for time, angle in angle_diff:
+        # Ensure time has UTC timezone
+        if time.tzinfo is None:
+            time = time.replace(tzinfo=datetime.timezone.utc)
+
         if angle < excl_angle:
             if min is None:
                 min = time
@@ -253,6 +530,7 @@ def get_excl_times(
     if min is not None:
         exclusion_times.append((min, max))  # type: ignore
 
+    logger.info(f"Found {len(exclusion_times)} exclusion time periods")
     return exclusion_times
 
 
@@ -273,6 +551,13 @@ def is_visible(
     Returns:
         np.bool: _description_
     """
+    logger.info(
+        f"Checking visibility at {time} with threshold {visibility_threshold} degrees"
+    )
+
+    # Ensure time has UTC timezone
+    if time.tzinfo is None:
+        time = time.replace(tzinfo=datetime.timezone.utc)
 
     ts = load.timescale()
     time_obj = ts.from_datetime(time)
@@ -284,7 +569,9 @@ def is_visible(
     topocentric = diff.at(time_obj)
     altitude, _, _ = topocentric.altaz()
 
-    return altitude.degrees > visibility_threshold  # type: ignore
+    is_visible = altitude.degrees > visibility_threshold  # type: ignore
+    logger.info(f"Visibility check result: {is_visible}")
+    return is_visible
 
 
 class RequestService:
@@ -658,8 +945,7 @@ class RequestService:
         try:
             requests = RequestService.get_all_requests(db)
             bookings = schedule_with_slots(
-                requests,
-                list(GroundStationService.get_ground_stations(db)),
+                requests, list(GroundStationService.get_ground_stations(db)), db
             )
             return bookings
         except SQLAlchemyError as e:
