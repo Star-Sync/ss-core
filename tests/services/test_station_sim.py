@@ -11,14 +11,35 @@ def station_sim_service():
 
 
 @pytest.fixture
-def mock_response():
+def mock_schedule_response():
     mock = MagicMock()
     mock.json.return_value = {"status": "success"}
     return mock
 
 
-def test_schedule_pass_success(station_sim_service, mock_response):
-    with patch("requests.post", return_value=mock_response) as mock_post:
+@pytest.fixture
+def mock_state_response():
+    mock = MagicMock()
+    mock.json.return_value = {"status": "success"}
+    return mock
+
+
+@pytest.fixture
+def mock_busy_times_response():
+    mock = MagicMock()
+    mock.json.return_value = [
+        {
+            "start_time": "2024-01-01T00:00:00",
+            "end_time": "2024-01-01T01:00:00",
+            "state": "both_busy",
+            "mission": "SCISAT"
+        }
+    ]
+    return mock
+
+
+def test_schedule_pass_success(station_sim_service, mock_schedule_response):
+    with patch("requests.post", return_value=mock_schedule_response) as mock_post:
         start_time = datetime.now()
         end_time = start_time + timedelta(minutes=30)
 
@@ -52,8 +73,8 @@ def test_schedule_pass_error(station_sim_service):
         mock_post.assert_called_once()
 
 
-def test_query_state_at_success(station_sim_service, mock_response):
-    with patch("requests.get", return_value=mock_response) as mock_get:
+def test_query_state_at_success(station_sim_service, mock_state_response):
+    with patch("requests.get", return_value=mock_state_response) as mock_get:
         query_time = datetime.now()
 
         result = station_sim_service.query_state_at(
@@ -75,8 +96,8 @@ def test_query_state_at_error(station_sim_service):
         mock_get.assert_called_once()
 
 
-def test_query_busy_times_success(station_sim_service, mock_response):
-    with patch("requests.get", return_value=mock_response) as mock_get:
+def test_query_busy_times_success(station_sim_service, mock_busy_times_response):
+    with patch("requests.get", return_value=mock_busy_times_response) as mock_get:
         start_time = datetime.now()
         end_time = start_time + timedelta(hours=24)
 
@@ -84,7 +105,14 @@ def test_query_busy_times_success(station_sim_service, mock_response):
             station="ICAN", start_time=start_time, end_time=end_time
         )
 
-        assert result == {"status": "success"}
+        assert result == [
+            {
+                "start_time": "2024-01-01T00:00:00",
+                "end_time": "2024-01-01T01:00:00",
+                "state": "both_busy",
+                "mission": "SCISAT"
+            }
+        ]
         mock_get.assert_called_once()
 
 
