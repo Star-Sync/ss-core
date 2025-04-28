@@ -27,14 +27,16 @@ def mock_state_response():
 @pytest.fixture
 def mock_busy_times_response():
     mock = MagicMock()
-    mock.json.return_value = [
-        {
-            "start_time": "2024-01-01T00:00:00",
-            "end_time": "2024-01-01T01:00:00",
-            "state": "both_busy",
-            "mission": "SCISAT"
-        }
-    ]
+    mock.json.return_value = {
+        "busy_times": [
+            {
+                "start_time": "2024-01-01T00:00:00",
+                "end_time": "2024-01-01T01:00:00",
+                "state": "both_busy",
+                "mission": "SCISAT",
+            }
+        ]
+    }
     return mock
 
 
@@ -110,7 +112,7 @@ def test_query_busy_times_success(station_sim_service, mock_busy_times_response)
                 "start_time": "2024-01-01T00:00:00",
                 "end_time": "2024-01-01T01:00:00",
                 "state": "both_busy",
-                "mission": "SCISAT"
+                "mission": "SCISAT",
             }
         ]
         mock_get.assert_called_once()
