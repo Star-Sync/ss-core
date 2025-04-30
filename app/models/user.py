@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,7 +12,12 @@ class UserBaseModel(BaseModel):
     )
     last_name: Optional[str] = Field(description="User's last name", examples=["Doe"])
     role: str = Field(
-        description="User's role (admin or user)", examples=["admin", "user"]
+        description="User's role (SYS_ADMIN, SYS_USER, MISSION_ADMIN, MISSION_USER)",
+        examples=["SYS_ADMIN", "SYS_USER", "MISSION_ADMIN", "MISSION_USER"],
+    )
+    mission_access: Optional[List[str]] = Field(
+        description="List of missions user has access to",
+        examples=[["SCISAT", "NEOSSAT"]],
     )
 
 
@@ -55,14 +60,21 @@ class UserUpdateModel(BaseModel):
     )
     role: Optional[str] = Field(
         default=None,
-        description="User's role (admin or user)",
-        examples=["admin", "user"],
+        description="User's role (SYS_ADMIN, SYS_USER, MISSION_ADMIN, MISSION_USER)",
+        examples=["SYS_ADMIN", "SYS_USER", "MISSION_ADMIN", "MISSION_USER"],
+    )
+    mission_access: Optional[List[str]] = Field(
+        default=None,
+        description="List of missions user has access to",
+        examples=[["SCISAT", "NEOSSAT"]],
     )
 
     @field_validator("role")
     def validate_role(cls, value):
-        if value not in {"admin", "user"}:
-            raise ValueError("Role must be either 'admin' or 'user'")
+        if value not in {"SYS_ADMIN", "SYS_USER", "MISSION_ADMIN", "MISSION_USER"}:
+            raise ValueError(
+                "Role must be either 'SYS_ADMIN', 'SYS_USER', 'MISSION_ADMIN', 'MISSION_USER'"
+            )
         return value
 
     class Config:

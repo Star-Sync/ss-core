@@ -18,8 +18,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # for debugging, elevate the log level of the sqlalchemy engine
-db_logger = logging.getLogger("sqlalchemy.engine")
-db_logger.setLevel(logging.DEBUG)
+# db_logger = logging.getLogger("sqlalchemy.engine")
+# db_logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
